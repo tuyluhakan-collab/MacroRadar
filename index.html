@@ -200,7 +200,7 @@
     <div class="switch-row"><input type="checkbox" id="autoRefreshChk" checked> 15 dakikada bir otomatik yenile</div>
     <span class="badge-live" id="lastFetchLabel">Henüz canlı çekim yapılmadı</span>
     <div class="live-note">
-      🟢 canlı/gecikmeli çekildi &nbsp;·&nbsp; 🟡 yedek snapshot &nbsp;·&nbsp; 🔴 çekim hatası — Tüm piyasa verileri doğrudan API/Web scraping ve yedekli haber motorları üzerinden kesintisiz çekilmektedir.
+      🟢 canlı/gecikmeli çekildi &nbsp;·&nbsp; 🟡 yedek snapshot &nbsp;·&nbsp; 🔴 çekim hatası — Tüm piyasa verileri doğrudan API/Web scraping ve ne zaman kısıtlamalı canlı haber motorları üzerinden çekilmektedir.
     </div>
   </div>
 
@@ -211,7 +211,7 @@
   <div class="grid-2">
     <div class="panel">
       <h2>🧭 Rejim Pusulası</h2>
-      <div class="desc">Risk iştahı (VIX/SPX) ve Dolar yönü (DXY) eksenlerinde canlı piyasa konumu.</div>
+      <div class="desc">Risk iştahı (VIX/SPX) ve Dolar yönü (DXY) eksenlerinde canlı dinamik konum.</div>
       <div class="compass-wrap">
         <svg id="compass" width="250" height="250" viewBox="0 0 250 250"></svg>
         <div class="compass-labels" id="compassLabels"></div>
@@ -268,7 +268,7 @@
     <!-- TIME-BASED DYNAMIC NEWS & CALENDAR PANEL -->
     <div class="panel">
       <h2>📡 Zaman Odaklı Küresel & Türkiye Makro Ajandası</h2>
-      <div class="desc">İlk açılışta varsayılan olarak **Bu Hafta** açık gelir. Sekmelerden döneme göre hızlıca geçiş yapabilirsiniz.</div>
+      <div class="desc">Kesin tarih filtresi: Yalnızca içinde bulunulan 7 güne ait canlı haberler Bu Hafta sekmesine düşer.</div>
       
       <div class="news-tabs" id="newsTabs">
         <button class="tab-btn active" data-tab="bu-hafta">🟢 Bu Hafta</button>
@@ -411,9 +411,12 @@ async function fetchYahooQuote(symbolsArray, tickSym, isYield = false, prefix = 
 
       const prevClose = meta.chartPreviousClose || price;
       const pct = ((price - prevClose) / prevClose) * 100;
+      
+      const isMarketClosed = meta.marketState && meta.marketState !== "REGULAR";
+      const statusSuffix = isMarketClosed ? " (Kapalı)" : "";
 
       t.val = isYield ? `%${fmtNum(price, digits)}` : `${prefix}${fmtNum(price, digits)}`;
-      t.chg = (pct >= 0 ? "+" : "") + fmtNum(pct, 2) + "%";
+      t.chg = ((pct >= 0 ? "+" : "") + fmtNum(pct, 2) + "%") + statusSuffix;
       t.dir = pct > 0.01 ? "up" : pct < -0.01 ? "down" : "flat";
       t.raw = price;
       t.status = "canli";
@@ -485,11 +488,48 @@ async function fetchGoldSilverRatio(){
   } else { t.status = "hata"; }
 }
 
-/* ================= TIME-BUCKETED NEWS & AGENDA ENGINE ================= */
+/* ================= STRICT DATE BUCKETING ENGINE ================= */
+function getNewsBucket(itemTimestamp) {
+  const now = new Date();
+  const pubDate = new Date(itemTimestamp);
+  
+  if (isNaN(pubDate.getTime())) return "arsiv";
+
+  // Bulunduğumuz haftanın başlangıcı (Pazartesi 00:00:00)
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay(); 
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  startOfWeek.setDate(startOfWeek.getDate() + diffToMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  // Bulunduğumuz haftanın bitişi (Pazar 23:59:59)
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  // Önümüzdeki haftanın bitişi
+  const endOfNextWeek = new Date(endOfWeek);
+  endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
+
+  // Bu ayın son günü
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  if (pubDate >= startOfWeek && pubDate <= endOfWeek) {
+    return "bu-hafta";
+  } else if (pubDate > endOfWeek && pubDate <= endOfNextWeek) {
+    return "gelecek-hafta";
+  } else if (pubDate > endOfNextWeek && pubDate <= endOfMonth) {
+    return "bu-ay";
+  } else {
+    return "arsiv";
+  }
+}
+
 async function fetchLiveNewsRSS() {
+  // when:7d parametresi ile Google News'e son 7 gün kısıtı koyuluyor
   const feeds = [
-    "https://news.google.com/rss/search?q=fed+inflation+economy+markets+tcmb&hl=en-US&gl=US&ceid=US:en",
-    "https://news.google.com/rss/search?q=bist100+tcmb+faiz+dolar+borsa+enflasyon&hl=tr-TR&gl=TR&ceid=TR:tr",
+    "https://news.google.com/rss/search?q=fed+inflation+economy+markets+tcmb+when:7d&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=bist100+tcmb+faiz+dolar+borsa+enflasyon+when:7d&hl=tr-TR&gl=TR&ceid=TR:tr",
     "https://finance.yahoo.com/news/rssindex"
   ];
 
@@ -501,12 +541,13 @@ async function fetchLiveNewsRSS() {
       const data = await fetchJSON(apiUrl, 5000);
       if (data && data.items && data.items.length > 0) {
         data.items.forEach(item => {
+          const isoDate = item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString();
           fetchedLiveItems.push({
             title: item.title,
             link: item.link,
-            timestamp: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+            timestamp: isoDate,
             comment: generateAutoMacroComment(item.title),
-            bucket: "bu-hafta" // Canlı RSS akışıvarsayılan olarak bu hafta akışına düşer
+            bucket: getNewsBucket(isoDate) // Dinamik tarih doğrulamalı kova tespiti
           });
         });
       }
@@ -515,74 +556,8 @@ async function fetchLiveNewsRSS() {
     }
   }
 
-  // Dinamik Zaman Bloklu Makro Ajanda
-  const structuredAgenda = getTimeBucketAgenda();
-  
   const uniqueLive = Array.from(new Map(fetchedLiveItems.map(item => [item.title, item])).values());
-  DATA.liveNews = [...structuredAgenda, ...uniqueLive.slice(0, 10)];
-}
-
-function getTimeBucketAgenda() {
-  const now = new Date();
-  
-  return [
-    // 🟢 BU HAFTA
-    {
-      title: "🗓️ [BU HAFTA] ABD Çekirdek TÜFE (CPI) & Enflasyon Verileri",
-      link: "https://www.bls.gov/cpi/",
-      timestamp: new Date(now - 4 * 3600 * 1000).toISOString(),
-      comment: "📌 BU HAFTA KRİTİK: Beklenti altı enflasyon DXY'yi zayıflatır, Ons Altın ve BIST100'ü destekler.",
-      bucket: "bu-hafta"
-    },
-    {
-      title: "🗓️ [BU HAFTA] TCMB Haftalık Para ve Banka İstatistikleri & Yabancı Payı",
-      link: "https://www.tcmb.gov.tr",
-      timestamp: new Date(now - 12 * 3600 * 1000).toISOString(),
-      comment: "📌 BU HAFTA KRİTİK: Yabancı yatırımcının BIST100 ve DİBS (tahvil) tarafındaki haftalık net alım/satım yönü.",
-      bucket: "bu-hafta"
-    },
-
-    // 🔵 GELECEK HAFTA
-    {
-      title: "🗓️ [GELECEK HAFTA] TCMB Para Politikası Kurulu (PPK) Faiz Kararı",
-      link: "https://www.tcmb.gov.tr",
-      timestamp: new Date(now.getTime() + 4 * 24 * 3600 * 1000).toISOString(),
-      comment: "📌 GELECEK HAFTA KRİTİK: Politika faizi duruşu, bankacılık hisseleri ve TL mevduat getirisi için doğrudan belirleyici.",
-      bucket: "gelecek-hafta"
-    },
-    {
-      title: "🗓️ [GELECEK HAFTA] ABD Tarım Dışı İstihdam (NFP) & İşsizlik Oranı",
-      link: "https://www.bls.gov/",
-      timestamp: new Date(now.getTime() + 6 * 24 * 3600 * 1000).toISOString(),
-      comment: "📌 GELECEK HAFTA KRİTİK: Fed'in sonraki toplantıda yapacağı faiz indirim adımı için en net sinyal.",
-      bucket: "gelecek-hafta"
-    },
-
-    // 🟣 BU AY
-    {
-      title: "🗓️ [BU AY] FOMC (Fed) Faiz Kararı ve Jerome Powell Basın Toplantısı",
-      link: "https://www.federalreserve.gov",
-      timestamp: new Date(now.getTime() + 18 * 24 * 3600 * 1000).toISOString(),
-      comment: "📌 BU AYIN ANA ODAĞI: Küresel dolar likiditesi, VIX oynaklık endeksi ve Kripto/Hisse rallisi yönü.",
-      bucket: "bu-ay"
-    },
-    {
-      title: "🗓️ [BU AY] TÜİK Aylık Enflasyon (TÜFE) Açıklaması",
-      link: "https://www.tuik.gov.tr",
-      timestamp: new Date(now.getTime() + 12 * 24 * 3600 * 1000).toISOString(),
-      comment: "📌 BU AYIN ANA ODAĞI: Reel faiz dengesi ve borsa alternatifi olan mevduat faizlerinin seyri.",
-      bucket: "bu-ay"
-    },
-
-    // ⚪ ARŞİV
-    {
-      title: "🏛️ [ARŞİV] Geçen Ayki Fed ve TCMB Faiz Kararları & Analiz Raporları",
-      link: "https://finance.yahoo.com",
-      timestamp: new Date(now - 35 * 24 * 3600 * 1000).toISOString(),
-      comment: "⚪ ARŞİV AKIŞI: Önceki dönem politika kararlarının piyasa üzerindeki uzun vadeli etkisi.",
-      bucket: "arsiv"
-    }
-  ];
+  DATA.liveNews = uniqueLive;
 }
 
 function generateAutoMacroComment(title) {
@@ -600,7 +575,7 @@ function generateAutoMacroComment(title) {
   }
 }
 
-let currentTab = "bu-hafta"; // VARSAYILAN OLARAK İLK AÇILIŞTA BU HAFTA SEÇİLİ GELİR
+let currentTab = "bu-hafta"; 
 
 function renderDynamicCalendar() {
   const container = document.getElementById("calList");
@@ -614,7 +589,7 @@ function renderDynamicCalendar() {
   const filtered = DATA.liveNews.filter(e => e.bucket === currentTab);
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="color:var(--text-dim); font-size:12.5px; padding:15px 0;">Bu zaman aralığı için henüz özel bir kayıt bulunamadı.</div>`;
+    container.innerHTML = `<div style="color:var(--text-dim); font-size:12.5px; padding:15px 0;">Bu zaman aralığında (${currentTab}) kayıtlı haber bulunmamaktadır. Tüm geçmiş haberler Arşiv sekmesine aktarılmıştır.</div>`;
     return;
   }
 
@@ -715,6 +690,33 @@ function updateDynamicSignalsAndComments() {
   sigs.forEach(s => {
     sigList.innerHTML += `<div class="sig"><div class="flag ${s.cls}">${s.flag}</div><div class="stext">${s.text}</div></div>`;
   });
+
+  // Rejim Pusulası Üzerinde Noktayı Anlık VIX ve DXY'ye Göre Dinamik Oynat
+  renderDynamicCompassDot(vix, dxy);
+}
+
+function renderDynamicCompassDot(vix, dxy) {
+  const dot = document.getElementById("compassDot");
+  const dotPulse = document.getElementById("compassDotPulse");
+  if (!dot || !dotPulse) return;
+
+  const cx = 125, cy = 125, r = 95;
+  
+  // VIX Normalizasyonu (10 ile 30 arası) -> Sol (-1) / Sağ (+1)
+  let vixFactor = (20 - vix) / 10; 
+  vixFactor = Math.max(-1, Math.min(1, vixFactor));
+
+  // DXY Normalizasyonu (96 ile 106 arası) -> Yukarı (-1) / Aşağı (+1)
+  let dxyFactor = (dxy - 101) / 5;
+  dxyFactor = Math.max(-1, Math.min(1, dxyFactor));
+
+  const posX = cx + (vixFactor * (r * 0.7));
+  const posY = cy + (dxyFactor * (r * 0.7));
+
+  dot.setAttribute("cx", posX);
+  dot.setAttribute("cy", posY);
+  dotPulse.setAttribute("cx", posX);
+  dotPulse.setAttribute("cy", posY);
 }
 
 /* ================= PLAYBOOK RULES ================= */
@@ -1012,10 +1014,10 @@ corrTable.innerHTML = thead + rows;
   let t2=el("text",{x:cx-r-58,y:cy+4,...labelStyle}); t2.textContent="RISK-OFF"; svg.appendChild(t2);
   let t3=el("text",{x:cx-24,y:cy-r-8,...labelStyle}); t3.textContent="DOLAR GÜÇLÜ"; svg.appendChild(t3);
   let t4=el("text",{x:cx-22,y:cy+r+16,...labelStyle}); t4.textContent="DOLAR ZAYIF"; svg.appendChild(t4);
-  const px=0.55, py=0.6;
-  const posX = cx + px*r, posY = cy + py*r;
-  svg.appendChild(el("circle",{cx:posX, cy:posY, r:9, fill:"#3FBF9E", opacity:"0.25"}));
-  svg.appendChild(el("circle",{cx:posX, cy:posY, r:5, fill:"#3FBF9E", stroke:"#0D1013", "stroke-width":1.5}));
+
+  // Dinamik Hareket Edecek Nokta
+  svg.appendChild(el("circle",{id:"compassDotPulse", cx:cx, cy:cy, r:9, fill:"#3FBF9E", opacity:"0.25"}));
+  svg.appendChild(el("circle",{id:"compassDot", cx:cx, cy:cy, r:5, fill:"#3FBF9E", stroke:"#0D1013", "stroke-width":1.5}));
 })();
 
 // İlk yükleme ve veri çekimi
