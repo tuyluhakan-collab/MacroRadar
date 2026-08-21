@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Makro Korelasyon Paneli - v6 (GitHub Pages Canlı Akış & Otomatik RSS)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D1013;
+    --panel:#151A1F;
+    --panel2:#1B2129;
+    --line:#262E37;
+    --line-soft:#1E252C;
+    --text:#E7EAEE;
+    --text-dim:#8D96A3;
+    --text-faint:#5C6570;
+    --amber:#E3B341;
+    --teal:#3FBF9E;
+    --red:#D6604D;
+    --blue:#5AA9E6;
+    --purple:#A78BDE;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 0%, #161C22 0%, transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    padding:28px 20px 60px;
+    line-height:1.5;
+  }
+  .wrap{max-width:1320px; margin:0 auto;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    flex-wrap:wrap; gap:14px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:18px; margin-bottom:16px;
+  }
+  .title-block h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:26px; font-weight:600; letter-spacing:-0.01em;
+  }
+  .title-block .sub{
+    color:var(--text-dim); font-size:13px; margin-top:4px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--panel2); border:1px solid var(--line);
+    border-radius:20px; padding:6px 12px; font-size:12px;
+    font-family:'IBM Plex Mono', monospace; color:var(--text-dim);
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--teal); box-shadow:0 0 8px var(--teal);}
+  .baseline-note{
+    font-size:11px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace;
+    margin-bottom:18px;
+  }
+
+  .ticker{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(126px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line);
+    border-radius:10px; overflow:hidden; margin-bottom:26px;
+  }
+  .tick{background:var(--panel); padding:14px 14px 12px; display:flex; flex-direction:column; gap:4px; position:relative;}
+  .tick .sym{font-size:11px; color:var(--text-faint); letter-spacing:.06em; text-transform:uppercase; font-family:'IBM Plex Mono',monospace;}
+  .tick .val{font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:600;}
+  .tick .chg{font-family:'IBM Plex Mono', monospace; font-size:12px;}
+  .tick .updated{font-size:9.5px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+  .up{color:var(--teal);} .down{color:var(--red);} .flat{color:var(--text-dim);}
+  .tick .status-dot{position:absolute; top:10px; right:10px; width:7px; height:7px; border-radius:50%;}
+  .status-dot.canli{background:var(--teal); box-shadow:0 0 6px var(--teal);}
+  .status-dot.snapshot{background:var(--amber);}
+  .status-dot.hata{background:var(--red);}
+
+  .grid-2{display:grid; grid-template-columns:1.15fr .85fr; gap:18px; margin-bottom:18px;}
+  @media (max-width:900px){ .grid-2{grid-template-columns:1fr;} }
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px 22px;}
+  .panel h2{font-family:'Space Grotesk', sans-serif; font-size:15px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px;}
+  .panel .desc{color:var(--text-dim); font-size:12.5px; margin-bottom:16px;}
+
+  table.corr{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:11px;}
+  table.corr th{color:var(--text-faint); font-weight:500; padding:5px 3px; text-align:center; font-size:10px;}
+  table.corr td.rowlabel{text-align:left; color:var(--text-dim); padding-right:8px; white-space:nowrap; font-size:10.5px;}
+  table.corr td{text-align:center; padding:2px;}
+  .cell{display:flex; align-items:center; justify-content:center; width:100%; height:27px; border-radius:5px; font-weight:600; color:#0D1013;}
+  .cell.dim{color:var(--text-faint); background:transparent !important; font-weight:400;}
+  .corr-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; font-size:11px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace;}
+  .corr-legend .lg-item{display:flex; align-items:center; gap:6px;}
+  .lg-sw{width:14px; height:10px; border-radius:2px;}
+
+  /* PLAYBOOK */
+  .playbook{display:flex; flex-direction:column; gap:8px;}
+  .pb-row{
+    display:grid; grid-template-columns:110px 1fr 200px; gap:12px; align-items:center;
+    border:1px solid var(--line-soft); border-radius:8px; padding:11px 14px; background:var(--panel2);
+  }
+  @media (max-width:800px){ .pb-row{grid-template-columns:1fr; } }
+  .pb-status{font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:5px; text-align:center; white-space:nowrap;}
+  .pb-status.active{background:rgba(63,191,158,.16); color:var(--teal); border:1px solid rgba(63,191,158,.4);}
+  .pb-status.inactive{background:rgba(140,150,161,.1); color:var(--text-faint); border:1px solid var(--line);}
+  .pb-cond{font-size:12.5px; color:var(--text-dim);}
+  .pb-cond b{color:var(--text);}
+  .pb-action{font-size:12px; font-family:'IBM Plex Mono',monospace;}
+  .pb-action .up-arrow{color:var(--teal);}
+  .pb-action .down-arrow{color:var(--red);}
+
+  .compass-wrap{display:flex; gap:20px; align-items:center; flex-wrap:wrap;}
+  .compass-labels{flex:1; min-width:200px;}
+  .regime-tag{display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:12px; background:rgba(63,191,158,0.12); color:var(--teal); border:1px solid rgba(63,191,158,0.35); padding:5px 10px; border-radius:6px; margin-bottom:10px;}
+  .compass-labels p{font-size:13px; color:var(--text-dim); margin-bottom:8px;}
+  .compass-labels b{color:var(--text);}
+
+  .sig-list{display:flex; flex-direction:column; gap:10px;}
+  .sig{display:flex; gap:10px; align-items:flex-start; border:1px solid var(--line-soft); border-radius:8px; padding:10px 12px; background:var(--panel2);}
+  .sig .flag{font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; white-space:nowrap; margin-top:2px;}
+  .flag.on{background:rgba(63,191,158,.15); color:var(--teal); border:1px solid rgba(63,191,158,.35);}
+  .flag.off{background:rgba(214,96,77,.15); color:var(--red); border:1px solid rgba(214,96,77,.35);}
+  .flag.watch{background:rgba(227,179,65,.15); color:var(--amber); border:1px solid rgba(227,179,65,.35);}
+  .sig .stext{font-size:13px; color:var(--text-dim);}
+  .sig .stext b{color:var(--text); font-weight:600;}
+
+  .alloc-wrap{display:flex; gap:24px; flex-wrap:wrap; align-items:center;}
+  .legend{display:flex; flex-direction:column; gap:10px; flex:1; min-width:230px;}
+  .legend-row{display:flex; align-items:center; gap:10px; font-size:13px;}
+  .sw{width:11px; height:11px; border-radius:3px; flex-shrink:0;}
+  .legend-row .lname{flex:1; color:var(--text-dim);}
+  .legend-row .lval{font-family:'IBM Plex Mono',monospace; font-weight:600;}
+
+  .risk-toggle{display:flex; gap:6px; margin-bottom:14px;}
+  .risk-btn{font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:6px 12px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text-dim); cursor:pointer; transition:.15s;}
+  .risk-btn.active{background:rgba(63,191,158,.14); color:var(--teal); border-color:rgba(63,191,158,.4);}
+  .risk-btn:hover{color:var(--text);}
+
+  .formula-box{
+    background:var(--panel2); border:1px solid var(--line-soft); border-radius:8px;
+    padding:10px 12px; margin-top:14px; font-size:11.5px; color:var(--text-dim);
+    font-family:'IBM Plex Mono',monospace; line-height:1.7;
+  }
+  .formula-box b{color:var(--text);}
+  .score-row{display:flex; justify-content:space-between; gap:8px;}
+
+  /* CALENDAR & NEWS STYLES (v6 DYNAMIC RSS) */
+  .cal-item{display:flex; flex-direction:column; gap:6px; padding:12px 0; border-bottom:1px solid var(--line-soft);}
+  .cal-item:last-child{border-bottom:none;}
+  .cal-header{display:flex; justify-content:space-between; align-items:center;}
+  .cal-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700;
+    padding:2px 8px; border-radius:4px; text-transform:uppercase;
+  }
+  .cal-badge.son-24{background:rgba(227,179,65,.18); color:var(--amber); border:1px solid rgba(227,179,65,.4);}
+  .cal-badge.gecmis{background:rgba(140,150,161,.12); color:var(--text-dim); border:1px solid var(--line);}
+  .cal-badge.gelecek{background:rgba(63,191,158,.18); color:var(--teal); border:1px solid rgba(63,191,158,.4);}
+  .cal-time{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-faint);}
+  .cal-title{font-size:13.5px; font-weight:600; color:var(--text);}
+  .cal-title a{color:var(--text); text-decoration:none; transition:.15s;}
+  .cal-title a:hover{color:var(--teal);}
+  .cal-comment{font-size:12px; color:var(--text-dim); background:var(--panel2); border-left:2px solid var(--teal); padding:6px 10px; border-radius:0 4px 4px 0; margin-top:4px;}
+  .cal-comment.neg{border-left-color:var(--red);}
+  .cal-comment.neutral{border-left-color:var(--amber);}
+
+  footer{margin-top:26px; border-top:1px solid var(--line); padding-top:16px;}
+  footer .warn{background:rgba(227,179,65,.08); border:1px solid rgba(227,179,65,.3); border-radius:8px; padding:12px 14px; font-size:12.5px; color:var(--text-dim); margin-bottom:14px;}
+  footer .warn b{color:var(--amber);}
+  .sources{font-size:11px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; line-height:1.8;}
+  .sources a{color:var(--blue); text-decoration:none;}
+  .badge-live{font-size:10px; font-family:'IBM Plex Mono',monospace; color:var(--text-faint);}
+
+  .live-panel{display:flex; flex-wrap:wrap; gap:14px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin-bottom:18px;}
+  .btn{font-family:'IBM Plex Mono',monospace; font-size:12px; padding:7px 14px; background:var(--panel2); border:1px solid var(--line); border-radius:6px; color:var(--text); cursor:pointer; transition:.15s;}
+  .btn:hover{border-color:var(--teal); color:var(--teal);}
+  .btn.primary{background:rgba(63,191,158,.14); border-color:rgba(63,191,158,.4); color:var(--teal);}
+  .switch-row{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace;}
+  .switch-row input{accent-color:var(--teal);}
+  .live-note{font-size:11px; color:var(--text-faint); flex-basis:100%; margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <h1>Makro Korelasyon Paneli</h1>
+      <div class="sub">VIX · DXY · US10Y/US2Y · XAU/XAG · SPX · BRENT · BAKIR · BTC · BIST100 &nbsp;—&nbsp; Canlı Küresel & Türkiye Makro Görünüm</div>
+    </div>
+    <div class="status-pill"><span class="dot"></span> <span id="liveClock">--:--:--</span> &nbsp;·&nbsp; Son yenileme: <span id="lastFetchLabel2">henüz yok</span></div>
+  </header>
+  <div class="baseline-note">Saat, tarayıcınızın gerçek yerel saatidir ve sürekli akar. 🟢 Rozetli değerler canlı/gecikmeli olarak API'lerden çekilir; 🟡 rozetli değerler yedek snapshot'tır; 🔴 çekim hatasını gösterir. Bu panel kesinlikle <b>yatırım tavsiyesi değildir</b>, piyasa senaryolarını takip için tasarlanmıştır.</div>
+
+  <!-- LIVE DATA ENGINE -->
+  <div class="live-panel">
+    <button class="btn primary" id="refreshBtn">↻ Şimdi Yenile</button>
+    <div class="switch-row"><input type="checkbox" id="autoRefreshChk" checked> 15 dakikada bir otomatik yenile (Optimizasyonlu)</div>
+    <span class="badge-live" id="lastFetchLabel">Henüz canlı çekim yapılmadı</span>
+    <div class="live-note">
+      🟢 canlı/gecikmeli çekildi &nbsp;·&nbsp; 🟡 yedek snapshot &nbsp;·&nbsp; 🔴 çekim hatası — Tüm piyasa verileri Yahoo Finance, CoinGecko, Frankfurter ve Gold-API üzerinden doğrudan veya yedekli API/Proxy kaynaklarıyla çekilmektedir.
+    </div>
+  </div>
+
+  <!-- TICKER -->
+  <div class="ticker" id="ticker"></div>
+
+  <!-- REGIME + SIGNALS -->
+  <div class="grid-2">
+    <div class="panel">
+      <h2>🧭 Rejim Pusulası</h2>
+      <div class="desc">Risk iştahı (VIX/SPX) ve Dolar yönü (DXY) eksenlerinde canlı piyasa konumu.</div>
+      <div class="compass-wrap">
+        <svg id="compass" width="250" height="250" viewBox="0 0 250 250"></svg>
+        <div class="compass-labels" id="compassLabels">
+          <!-- Dinamik içerik JS tarafında oluşturulur -->
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚡ Kural Bazlı Sinyaller</h2>
+      <div class="desc">Canlı veriye göre anlık hesaplanan kural bazlı durumlar.</div>
+      <div class="sig-list" id="sigList"></div>
+    </div>
+  </div>
+
+  <!-- CORRELATION MATRIX -->
+  <div class="panel" style="margin-bottom:18px;">
+    <h2>🔗 Varlıklar Arası Korelasyon Haritası</h2>
+    <div class="desc">Finansal literatürden yaklaşık <b>uzun dönem</b> korelasyon eğilimleri (−1..+1). Nasıl okunur: <b>koyu yeşil</b> = birlikte hareket eder (biri çıkarsa diğeri de çıkar), <b>koyu kırmızı</b> = ters hareket eder (biri çıkarsa diğeri düşer), boş/gri = anlamlı ilişki yok. Bu sayılar tarihsel referanstır; makro rejim kırılmalarında geçici olarak bozulabilir.</div>
+    <div style="overflow-x:auto;">
+      <table class="corr" id="corrTable"></table>
+    </div>
+    <div class="corr-legend">
+      <div class="lg-item"><div class="lg-sw" style="background:#3FBF9E"></div> Güçlü pozitif (+0.6 ve üzeri)</div>
+      <div class="lg-item"><div class="lg-sw" style="background:#D6604D"></div> Güçlü negatif (-0.6 ve altı)</div>
+      <div class="lg-item"><div class="lg-sw" style="background:transparent; border:1px solid var(--line)"></div> Zayıf / anlamsız ilişki</div>
+    </div>
+  </div>
+
+  <!-- ACTIONABLE PLAYBOOK -->
+  <div class="panel" style="margin-bottom:18px;">
+    <h2>🧩 Rejime Göre Varlık Geçiş Rehberi</h2>
+    <div class="desc">Yukarıdaki korelasyonların "hangi durumda ne yapılır" karşılığı. <b>AKTİF</b> etiketi, o koşulun şu anki canlı verilere göre gerçekleştiğini gösterir — "Yenile"ye bastıkça dinamik değerlendirilir. Eğitim ve senaryo amaçlıdır, yatırım tavsiyesi değildir.</div>
+    <div class="playbook" id="playbookList"></div>
+  </div>
+
+  <!-- ALLOCATION + CALENDAR -->
+  <div class="grid-2">
+    <div class="panel">
+      <h2>🎯 Tam Dinamik Varlık Dağılımı Motoru</h2>
+      <div class="desc">Bu portföy sabit bir oran içermez; <b>canlı makro risk skoruna</b> ve seçtiğiniz <b>risk toleransı moduna</b> göre sıfırdan tamamen dinamik oluşturulur.</div>
+
+      <div class="risk-toggle" id="riskToggle">
+        <button class="risk-btn" data-r="dusuk">Düşük Risk Modu (Defansif)</button>
+        <button class="risk-btn active" data-r="orta">Orta Risk Modu (Dengeli)</button>
+        <button class="risk-btn" data-r="yuksek">Yüksek Risk Modu (Agresif/Fırsatçı)</button>
+      </div>
+
+      <div class="alloc-wrap">
+        <svg id="donut" width="190" height="190" viewBox="0 0 200 200"></svg>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="formula-box" id="formulaBox"></div>
+    </div>
+
+    <!-- V6 CANLI DİNAMİK RSS HABER & VERİ AKIŞI -->
+    <div class="panel">
+      <h2>📡 Canlı Küresel Makro Haberler & Veri Akışı</h2>
+      <div class="desc">Canlı Google Finance / RSS servislerinden çekilir. <b>Son 24 saatteki</b> haberler en üstte 🟡 <b>AÇIKLANDI / SICAK</b> etiketiyle tutulur; 24 saati dolduranlar arşive kayar.</div>
+      <div id="calList"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="warn">
+      <b>Uyarı:</b> Bu panel kesinlikle bir yatırım danışmanlığı veya finansal yönlendirme hizmeti değildir; eğitim, araştırma ve senaryo takibi amaçlıdır. Veriler kamuya açık ücretsiz API, RSS ve proxy kaynaklarından anlık veya gecikmeli olarak çekilmektedir. Yatırım kararlarınızı kendi araştırmalarınıza ve yetkili lisanslı danışmanlarınıza dayanarak veriniz.
+    </div>
+    <div class="sources">
+      KAYNAKLAR & API'LER — Yahoo Finance API &nbsp;|&nbsp; Google Finance RSS Engine &nbsp;|&nbsp; CoinGecko API &nbsp;|&nbsp; Frankfurter / ExchangeRate API &nbsp;|&nbsp; Gold-API
+    </div>
+  </footer>
+
+</div>
+
+<script>
+/* ================= INITIAL DATA & SNAPSHOT FALLBACKS ================= */
+const DATA = {
+  ticker: [
+    {sym:"VIX",       val:"15.84",    chg:"+0.00%", dir:"flat",        raw:15.84},
+    {sym:"SPX",       val:"5,500.00", chg:"+0.00%", dir:"flat",        raw:5500.00},
+    {sym:"DXY",       val:"101.20",   chg:"+0.00%", dir:"flat",        raw:101.20},
+    {sym:"US10Y",     val:"%4.25",    chg:"+0.00%", dir:"flat",        raw:4.25},
+    {sym:"US2Y",      val:"%4.05",    chg:"+0.00%", dir:"flat",        raw:4.05},
+    {sym:"XAU/USD",   val:"$2,500",   chg:"+0.00%", dir:"flat",        raw:2500},
+    {sym:"XAG/USD",   val:"$30.00",   chg:"+0.00%", dir:"flat",        raw:30.00},
+    {sym:"AU/AG Oranı",val:"~83.3x",  chg:"hesaplanıyor",dir:"flat",   raw:83.3},
+    {sym:"BRENT",     val:"$78.50",   chg:"+0.00%", dir:"flat",        raw:78.50},
+    {sym:"BAKIR",     val:"$4.15/lb", chg:"+0.00%", dir:"flat",        raw:4.15},
+    {sym:"BTC/USD",   val:"$60,000",  chg:"+0.00%", dir:"flat",        raw:60000},
+    {sym:"BIST100",   val:"10,000",   chg:"+0.00%", dir:"flat",        raw:10000},
+    {sym:"USD/TRY",   val:"34.00",    chg:"+0.00%", dir:"flat",        raw:34.00},
+  ],
+  corrAssets: ["VIX","DXY","US10Y","XAU","XAG","SPX","BTC","BIST","BRENT","BAKIR"],
+  corrMatrix: [
+    [ 1.00,  0.10,  0.05, 0.15, 0.10, -0.80, -0.40, -0.55,  0.15, -0.35],
+    [ 0.10,  1.00,  0.30,-0.45,-0.40,  0.10, -0.30, -0.45, -0.35, -0.40],
+    [ 0.05,  0.30,  1.00,-0.30,-0.25, -0.10, -0.15, -0.35,  0.30,  0.20],
+    [ 0.15, -0.45, -0.30, 1.00, 0.85,  0.05,  0.20,  0.10,  0.20,  0.15],
+    [ 0.10, -0.40, -0.25, 0.85, 1.00,  0.10,  0.25,  0.15,  0.20,  0.45],
+    [-0.80,  0.10, -0.10, 0.05, 0.10,  1.00,  0.45,  0.55,  0.10,  0.50],
+    [-0.40, -0.30, -0.15, 0.20, 0.25,  0.45,  1.00,  0.30,  0.10,  0.20],
+    [-0.55, -0.45, -0.35, 0.10, 0.15,  0.55,  0.30,  1.00, -0.15,  0.35],
+    [ 0.15, -0.35,  0.30, 0.20, 0.20,  0.10,  0.10, -0.15,  1.00,  0.40],
+    [-0.35, -0.40,  0.20, 0.15, 0.45,  0.50,  0.20,  0.35,  0.40,  1.00],
+  ],
+  liveNews: []
+};
+
+DATA.ticker.forEach(t=>{ t.status = "snapshot"; t.updated = null; });
+
+function fmtNum(n, digits=2){ return Number(n).toLocaleString("tr-TR", {minimumFractionDigits:digits, maximumFractionDigits:digits}); }
+function nowLabel(){ return new Date().toLocaleTimeString("tr-TR", {hour:'2-digit', minute:'2-digit', second:'2-digit'}); }
+function findTick(sym){ return DATA.ticker.find(t=>t.sym===sym); }
+
+/* ================= LIVE CLOCK ================= */
+function tickClock(){
+  document.getElementById("liveClock").textContent = new Date().toLocaleString("tr-TR", {
+    day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit'
+  });
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ================= TICKER RENDER ================= */
+const tickerEl = document.getElementById("ticker");
+function renderTicker(){
+  tickerEl.innerHTML = "";
+  DATA.ticker.forEach(t=>{
+    const dirClass = t.dir==="up" ? "up" : t.dir==="down" ? "down" : "flat";
+    const dotClass = t.status === "canli" ? "canli" : t.status === "hata" ? "hata" : "snapshot";
+    const updatedTxt = t.updated ? `güncellendi ${t.updated}` : "anlık görüntü";
+    tickerEl.innerHTML += `
+      <div class="tick">
+        <span class="status-dot ${dotClass}"></span>
+        <div class="sym">${t.sym}</div>
+        <div class="val">${t.val}</div>
+        <div class="chg ${dirClass}">${t.chg}</div>
+        <div class="updated">${updatedTxt}</div>
+      </div>`;
+  });
+}
+renderTicker();
+
+/* ================= FETCH HELPERS & MULTI-PROXY FALLBACK ENGINE ================= */
+async function fetchJSON(url, timeoutMs=8000){
+  const ctrl = new AbortController();
+  const id = setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(url, {signal: ctrl.signal});
+    clearTimeout(id);
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  } catch(err){ clearTimeout(id); throw err; }
+}
+
+const PROXIES = [
+  url => url,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+];
+
+async function fetchWithProxyFallback(targetUrl) {
+  let lastErr = null;
+  for (const proxyGenerator of PROXIES) {
+    try {
+      const pUrl = proxyGenerator(targetUrl);
+      const data = await fetchJSON(pUrl, 6000);
+      if (data) return data;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error("Tüm proxy denemeleri başarısız oldu.");
+}
+
+async function fetchYahooQuote(symbol, tickSym, isYield = false, prefix = "", digits = 2) {
+  const t = findTick(tickSym);
+  try {
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`;
+    const data = await fetchWithProxyFallback(targetUrl);
+    
+    const result = data.chart?.result?.[0];
+    if (!result) throw new Error("Geçersiz Yahoo yanıtı");
+    
+    const meta = result.meta;
+    const price = meta.regularMarketPrice;
+    const prevClose = meta.chartPreviousClose || price;
+    const pct = ((price - prevClose) / prevClose) * 100;
+
+    t.val = isYield ? `%${fmtNum(price, digits)}` : `${prefix}${fmtNum(price, digits)}`;
+    t.chg = (pct >= 0 ? "+" : "") + fmtNum(pct, 2) + "%";
+    t.dir = pct > 0.01 ? "up" : pct < -0.01 ? "down" : "flat";
+    t.raw = price;
+    t.status = "canli";
+    t.updated = nowLabel();
+  } catch (err) {
+    console.warn(`${symbol} (${tickSym}) Yahoo fetch başarısız:`, err);
+    t.status = "hata";
+  }
+}
+
+async function fetchBTC(){
+  const t = findTick("BTC/USD");
+  try{
+    const data = await fetchJSON("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true");
+    const price = data.bitcoin.usd, chg = data.bitcoin.usd_24h_change;
+    t.val = "$" + fmtNum(price,0); t.chg = (chg>=0?"+":"") + fmtNum(chg,2) + "%";
+    t.dir = chg>0 ? "up" : chg<0 ? "down" : "flat"; t.raw = price;
+    t.status = "canli"; t.updated = nowLabel();
+  }catch(err){ console.warn("BTC fetch başarısız:", err); t.status = "hata"; }
+}
+
+async function fetchUSDTRY(){
+  const t = findTick("USD/TRY");
+  try{
+    const data = await fetchJSON("https://api.frankfurter.app/latest?from=USD&to=TRY");
+    const rate = data.rates.TRY;
+    t.val = fmtNum(rate,2); t.chg = "canlı kur"; t.dir = "flat"; t.raw = rate;
+    t.status = "canli"; t.updated = nowLabel();
+  }catch(err){ 
+    try {
+      const altData = await fetchJSON("https://open.er-api.com/v6/latest/USD");
+      const rate = altData.rates.TRY;
+      t.val = fmtNum(rate,2); t.chg = "canlı kur"; t.dir = "flat"; t.raw = rate;
+      t.status = "canli"; t.updated = nowLabel();
+    } catch(e) {
+      try {
+        await fetchYahooQuote("TRY=X", "USD/TRY", false, "", 2);
+      } catch(e2) {
+        console.warn("USD/TRY tüm kaynaklar başarısız:", e2);
+        t.status = "hata"; 
+      }
+    }
+  }
+}
+
+async function fetchMetal(symbol, tickSym){
+  const t = findTick(tickSym);
+  try{
+    const data = await fetchJSON(`https://api.gold-api.com/price/${symbol}`);
+    const price = data.price;
+    t.val = "$" + fmtNum(price, symbol==="XAU"?0:2);
+    t.chg = "canlı spot"; t.dir = "flat"; t.raw = price;
+    t.status = "canli"; t.updated = nowLabel();
+    return price;
+  }catch(err){ 
+    try {
+      const yahooSymbol = symbol === "XAU" ? "GC=F" : "SI=F";
+      await fetchYahooQuote(yahooSymbol, tickSym, false, "$", symbol==="XAU"?0:2);
+      return findTick(tickSym).raw;
+    } catch(e) {
+      console.warn(symbol + " yedek fetch başarısız:", e); 
+      t.status = "hata"; 
+      return null; 
+    }
+  }
+}
+
+async function fetchGoldSilverRatio(){
+  const xau = await fetchMetal("XAU", "XAU/USD");
+  const xag = await fetchMetal("XAG", "XAG/USD");
+  const t = findTick("AU/AG Oranı");
+  if(xau && xag){
+    const ratio = xau/xag;
+    t.val = "~" + fmtNum(ratio,1) + "x"; t.chg = "canlı oran"; t.raw = ratio;
+    t.status = "canli"; t.updated = nowLabel();
+  } else { t.status = "hata"; }
+}
+
+async function fetchSPX() {
+  const t = findTick("SPX");
+  try {
+    await fetchYahooQuote("^GSPC", "SPX");
+    if (t.status === "hata") {
+      await fetchYahooQuote("SPY", "SPX");
+    }
+  } catch(e) { t.status = "hata"; }
+}
+
+async function fetchDXY() {
+  const t = findTick("DXY");
+  try {
+    await fetchYahooQuote("DX-Y.NYB", "DXY");
+    if (t.status === "hata") {
+      await fetchYahooQuote("UUP", "DXY");
+    }
+  } catch(e) { t.status = "hata"; }
+}
+
+async function fetchUS10Y() {
+  const t = findTick("US10Y");
+  try {
+    await fetchYahooQuote("^TNX", "US10Y", true);
+  } catch(e) { t.status = "hata"; }
+}
+
+async function fetchUS2Y() {
+  const t = findTick("US2Y");
+  try {
+    await fetchYahooQuote("^IRX", "US2Y", true);
+  } catch(e) { t.status = "hata"; }
+}
+
+/* ================= V6 DYNAMIC GOOGLE NEWS / RSS ENGINE ================= */
+async function fetchLiveNewsRSS() {
+  const rssUrl = "https://news.google.com/rss/search?q=fed+inflation+economy+markets+tcmb&hl=en-US&gl=US&ceid=US:en";
+  const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+  try {
+    const data = await fetchJSON(apiUrl);
+    if (data && data.items && data.items.length > 0) {
+      DATA.liveNews = data.items.slice(0, 6).map((item, idx) => {
+        return {
+          id: idx + 1,
+          timestamp: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+          title: item.title,
+          link: item.link,
+          comment: generateAutoMacroComment(item.title)
+        };
+      });
+    }
+  } catch (err) {
+    console.warn("RSS Canlı Haber çekim hatası:", err);
+  }
+}
+
+function generateAutoMacroComment(title) {
+  const t = title.toLowerCase();
+  if (t.includes("inflation") || t.includes("cpi") || t.includes("enflasyon")) {
+    return "💡 Enflasyon odaklı veri akışı: Tahvil getirileri ve Ons Altın tarafında oynaklığı artırabilir.";
+  } else if (t.includes("fed") || t.includes("powell") || t.includes("rate")) {
+    return "💡 Merkez bankası politika beklentisi: DXY Dolar Endeksi ve Küresel Borsalar için yön belirleyici.";
+  } else if (t.includes("oil") || t.includes("energy")) {
+    return "💡 Enerji maliyeti akışı: Brent petrol kanalı üzerinden enflasyon beklentilerini etkiler.";
+  } else {
+    return "💡 Küresel piyasalarda takip edilen makro gelişme / haber akışı.";
+  }
+}
+
+function renderDynamicCalendar() {
+  const container = document.getElementById("calList");
+  container.innerHTML = "";
+
+  const now = Date.now();
+  const ONE_DAY_MS = 24 * 3600 * 1000;
+
+  if (!DATA.liveNews || DATA.liveNews.length === 0) {
+    container.innerHTML = `<div style="color:var(--text-dim); font-size:12px;">Haber akışı güncelleniyor...</div>`;
+    return;
+  }
+
+  const sorted = [...DATA.liveNews].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  sorted.forEach(evt => {
+    const evtTime = new Date(evt.timestamp).getTime();
+    const diffHours = Math.max(0, Math.round((now - evtTime) / (3600 * 1000)));
+    
+    let badgeHtml = "";
+    let timeStr = "";
+
+    if ((now - evtTime) <= ONE_DAY_MS) {
+      badgeHtml = `<span class="cal-badge son-24">🟡 AÇIKLANDI / SICAK (${diffHours} saat önce)</span>`;
+      timeStr = new Date(evt.timestamp).toLocaleTimeString("tr-TR", {hour:'2-digit', minute:'2-digit'});
+    } else {
+      const diffDays = Math.floor((now - evtTime) / ONE_DAY_MS);
+      badgeHtml = `<span class="cal-badge gecmis">⚪ ARŞİV (${diffDays} gün önce)</span>`;
+      timeStr = new Date(evt.timestamp).toLocaleDateString("tr-TR", {day:'2-digit', month:'2-digit'});
+    }
+
+    container.innerHTML += `
+      <div class="cal-item">
+        <div class="cal-header">
+          ${badgeHtml}
+          <span class="cal-time">${timeStr}</span>
+        </div>
+        <div class="cal-title"><a href="${evt.link}" target="_blank" rel="noopener">${evt.title}</a></div>
+        <div class="cal-comment">
+          ${evt.comment}
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* ================= DYNAMIC SIGNALS & COMMENTS ================= */
+function updateDynamicSignalsAndComments() {
+  const vix = findTick("VIX").raw;
+  const dxy = findTick("DXY").raw;
+  const us10y = findTick("US10Y").raw;
+  const us2y = findTick("US2Y").raw;
+  const brent = findTick("BRENT").raw;
+  const copper = findTick("BAKIR").raw;
+  const yieldSpread = (us10y - us2y).toFixed(2);
+
+  const container = document.getElementById("compassLabels");
+  const isRiskOn = vix < 20;
+  const isDxyWeak = dxy < 100;
+  
+  let regimeText = "";
+  if (isRiskOn && isDxyWeak) regimeText = "Risk-ON + Dolar Zayıf (Gelişmekte Olan Piyasalar / Metal Tarafı Destekli)";
+  else if (isRiskOn && !isDxyWeak) regimeText = "Risk-ON + Dolar Güçlü (ABD Hisse Dominant)";
+  else if (!isRiskOn && isDxyWeak) regimeText = "Risk-OFF + Dolar Zayıf (Kripto / Emtia Sıcak Bölge)";
+  else regimeText = "Risk-OFF + Dolar Güçlü (Tam Güvenli Liman Modu)";
+
+  container.innerHTML = `
+    <div class="regime-tag">● Rejim: ${regimeText}</div>
+    <p>VIX <b>${vix.toFixed(2)}</b> — ${vix < 20 ? "Oynaklık düşük, risk iştahı açık." : "Oynaklık yüksek, piyasalar gergin."}</p>
+    <p>DXY <b>${dxy.toFixed(2)}</b> seviyesinde izleniyor.</p>
+    <p>US10Y <b>%${us10y.toFixed(2)}</b>, US2Y <b>%${us2y.toFixed(2)}</b> — Getiri eğrisi farkı: <b>${yieldSpread >= 0 ? '+' : ''}${yieldSpread}bp</b> (${yieldSpread >= 0 ? "Normal eğri" : "Ters eğri / Resesyon riski"}).</p>
+    <p>Brent <b>$${brent.toFixed(2)}</b> seviyesinde — Enflasyon ve jeopolitik risk göstergesi.</p>
+    <p>Bakır <b>$${copper.toFixed(2)}/lb</b> — Küresel sanayi ve büyüme beklentileri simgesi.</p>
+  `;
+
+  const sigList = document.getElementById("sigList");
+  sigList.innerHTML = "";
+
+  const sigs = [
+    {
+      flag: vix < 20 ? "ON" : "OFF",
+      cls: vix < 20 ? "on" : "off",
+      text: `<b>VIX (${vix.toFixed(2)}):</b> ${vix < 20 ? "20 altında — Hisse senetlerinde oynaklık primi düşük, risk iştahı destekleniyor." : "20 üzerinde — Piyasada stres ve korunma talebi yüksek."}`
+    },
+    {
+      flag: dxy < 100 ? "ON" : "İZLE",
+      cls: dxy < 100 ? "on" : "watch",
+      text: `<b>DXY Dolar Endeksi (${dxy.toFixed(2)}):</b> ${dxy < 100 ? "100 altında — Zayıf dolar, emtia ve gelişmekte olan ülke varlıklarını destekliyor." : "100 üzerinde — Güçlü dolar, küresel likiditeyi sıkılaştırıyor."}`
+    },
+    {
+      flag: yieldSpread >= 0 ? "ON" : "ANOMALİ",
+      cls: yieldSpread >= 0 ? "on" : "watch",
+      text: `<b>Getiri Eğrisi (US10Y - US2Y = ${yieldSpread}bp):</b> ${yieldSpread >= 0 ? "Pozitif getiri eğrisi — Resesyon fiyatlaması zayıf." : "Ters getiri eğrisi (US2Y > US10Y) — Tarihsel resesyon öncü göstergesi aktif!"}`
+    },
+    {
+      flag: brent > 90 ? "İZLE" : "ON",
+      cls: brent > 90 ? "watch" : "on",
+      text: `<b>Brent Petrol ($${brent.toFixed(2)}):</b> ${brent > 90 ? "90$ üzerinde — Enerji kaynaklı enflasyonist baskı riski canlı." : "Maliyet baskıları nispeten dengeli."}`
+    }
+  ];
+
+  sigs.forEach(s => {
+    sigList.innerHTML += `<div class="sig"><div class="flag ${s.cls}">${s.flag}</div><div class="stext">${s.text}</div></div>`;
+  });
+}
+
+/* ================= PLAYBOOK RULES ================= */
+const PLAYBOOK_RULES = [
+  {
+    label:"VIX yükselirse (>25)",
+    check: ()=> findTick("VIX").raw > 25,
+    corrRef:"VIX-SPX(-0.80), VIX-BIST(-0.55), VIX-BTC(-0.40)",
+    up:["Likit","Altın"], down:["Hisse","Kripto","BIST"],
+  },
+  {
+    label:"VIX düşükse (<20)",
+    check: ()=> findTick("VIX").raw < 20,
+    corrRef:"VIX-SPX(-0.80), VIX-BAKIR(-0.35)",
+    up:["Hisse","Kripto"], down:["Aşırı Likit"],
+  },
+  {
+    label:"DXY güçlenirse (>102)",
+    check: ()=> findTick("DXY").raw > 102,
+    corrRef:"DXY-XAU(-0.45), DXY-BIST(-0.45), DXY-BAKIR(-0.40)",
+    up:["Likit (USD)"], down:["Altın","Gümüş","BIST","Kripto"],
+  },
+  {
+    label:"DXY zayıflarsa (<100)",
+    check: ()=> findTick("DXY").raw < 100,
+    corrRef:"DXY-XAU(-0.45), DXY-BIST(-0.45)",
+    up:["Altın","Gümüş","BIST","Kripto"], down:["Aşırı Likit (USD)"],
+  },
+  {
+    label:"Getiri eğrisi tersine döner (US2Y > US10Y)",
+    check: ()=> findTick("US2Y").raw > findTick("US10Y").raw,
+    corrRef:"Resesyon öncü göstergesi",
+    up:["Likit","Altın"], down:["Hisse","Kripto"],
+  },
+  {
+    label:"AU/AG oranı düşerse (<80, gümüş öne çıkar)",
+    check: ()=> findTick("AU/AG Oranı").raw < 80,
+    corrRef:"XAU-XAG(+0.85), XAG-BAKIR(+0.45)",
+    up:["Gümüş (metal içinde taktik ağırlık)"], down:[],
+  },
+  {
+    label:"Brent yükselirse (>85, enflasyon riski)",
+    check: ()=> findTick("BRENT").raw > 85,
+    corrRef:"BRENT-US10Y(+0.30), BRENT-XAU(+0.20)",
+    up:["Kıymetli Metal","Kısa Vadeli Likit"], down:["Uzun Vadeli Büyüme Hisseleri"],
+  },
+  {
+    label:"Bakır düşerse (<4.0, büyüme yavaşlama sinyali)",
+    check: ()=> findTick("BAKIR").raw < 4.0,
+    corrRef:"BAKIR-SPX(+0.50), BAKIR-BIST(+0.35)",
+    up:["Likit"], down:["Hisse","BIST"],
+  },
+];
+
+function renderPlaybook(){
+  const el = document.getElementById("playbookList");
+  el.innerHTML = "";
+  PLAYBOOK_RULES.forEach(rule=>{
+    let active = false;
+    try{ active = !!rule.check(); }catch(e){ active = false; }
+    const statusHtml = active
+      ? `<div class="pb-status active">AKTİF</div>`
+      : `<div class="pb-status inactive">pasif</div>`;
+    const upTxt = rule.up.length ? `<span class="up-arrow">▲ ${rule.up.join(", ")}</span>` : "";
+    const downTxt = rule.down.length ? `<span class="down-arrow"> &nbsp;▼ ${rule.down.join(", ")}</span>` : "";
+    el.innerHTML += `
+      <div class="pb-row">
+        ${statusHtml}
+        <div class="pb-cond"><b>${rule.label}</b><br><span style="font-size:11px;color:var(--text-faint)">İlişki: ${rule.corrRef}</span></div>
+        <div class="pb-action">${upTxt}${downTxt}</div>
+      </div>`;
+  });
+}
+
+/* ================= FULLY DYNAMIC ALLOCATION ENGINE ================= */
+let currentRiskScenario = "orta";
+
+function calculateMarketRiskScore() {
+  const vix = findTick("VIX").raw;
+  const dxy = findTick("DXY").raw;
+  const us10y = findTick("US10Y").raw;
+  const us2y = findTick("US2Y").raw;
+  const yieldSpread = us10y - us2y;
+  const brent = findTick("BRENT").raw;
+
+  let score = 50; 
+
+  if (vix < 18) score += 25;
+  else if (vix < 22) score += 10;
+  else if (vix > 28) score -= 25;
+  else if (vix > 24) score -= 15;
+
+  if (dxy < 99) score += 15;
+  else if (dxy < 101) score += 5;
+  else if (dxy > 103) score -= 15;
+
+  if (yieldSpread >= 0.2) score += 10;
+  else if (yieldSpread < 0) score -= 20;
+
+  if (brent > 90) score -= 10;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function calculateDynamicAllocation(scenario) {
+  const score = calculateMarketRiskScore();
+  let likit, metal, kripto, hisse;
+
+  if (scenario === "yuksek") {
+    hisse  = Math.round(10 + (score * 0.35));
+    kripto = Math.round(5  + (score * 0.30));
+    metal  = Math.round(30 - (score * 0.20));
+    likit  = Math.max(10, 100 - (hisse + kripto + metal));
+  } else if (scenario === "orta") {
+    hisse  = Math.round(5  + (score * 0.25));
+    kripto = Math.round(5  + (score * 0.15));
+    metal  = Math.round(35 - (score * 0.15));
+    likit  = Math.max(15, 100 - (hisse + kripto + metal));
+  } else {
+    hisse  = Math.round(0  + (score * 0.15));
+    kripto = Math.round(0  + (score * 0.08));
+    metal  = Math.round(40 - (score * 0.15));
+    likit  = Math.max(25, 100 - (hisse + kripto + metal));
+  }
+
+  const total = likit + metal + kripto + hisse;
+  likit += (100 - total);
+
+  return {
+    score,
+    alloc: [
+      { name: "Likit (Nakit/Mevduat)", pct: likit, color: "#5AA9E6" },
+      { name: "Kıymetli Metal (Altın/Gümüş)", pct: metal, color: "#E3B341" },
+      { name: "Kripto Varlıklar", pct: kripto, color: "#A78BDE" },
+      { name: "Hisse Senedi (BIST/Global)", pct: hisse, color: "#3FBF9E" }
+    ]
+  };
+}
+
+function renderDonut(scenario){
+  currentRiskScenario = scenario;
+  const { score, alloc } = calculateDynamicAllocation(scenario);
+
+  const svg = document.getElementById("donut");
+  svg.innerHTML = "";
+  const ns = "http://www.w3.org/2000/svg";
+  const cx=100, cy=100, rOuter=85, rInner=52;
+  let startAngle = -90;
+
+  function polar(cx,cy,r,angleDeg){ const a=(angleDeg-90)*Math.PI/180; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+  function arcPath(cx,cy,r1,r2,a0,a1){
+    if (a1 - a0 >= 360) a1 = a0 + 359.99;
+    const [x0,y0]=polar(cx,cy,r2,a0),[x1,y1]=polar(cx,cy,r2,a1),[x2,y2]=polar(cx,cy,r1,a1),[x3,y3]=polar(cx,cy,r1,a0);
+    const large=(a1-a0)>180?1:0;
+    return `M ${x0} ${y0} A ${r2} ${r2} 0 ${large} 1 ${x1} ${y1} L ${x2} ${y2} A ${r1} ${r1} 0 ${large} 0 ${x3} ${y3} Z`;
+  }
+
+  alloc.forEach((a)=>{
+    const sweep = (a.pct/100)*360;
+    if(sweep > 0){
+      const path = document.createElementNS(ns,"path");
+      path.setAttribute("d", arcPath(cx,cy,rInner,rOuter,startAngle,startAngle+sweep));
+      path.setAttribute("fill", a.color); 
+      path.setAttribute("opacity","0.9");
+      svg.appendChild(path);
+    }
+    startAngle += sweep;
+  });
+
+  const c1=document.createElementNS(ns,"text"); c1.setAttribute("x",100); c1.setAttribute("y",94);
+  c1.setAttribute("text-anchor","middle"); c1.setAttribute("fill","#E7EAEE");
+  c1.setAttribute("font-family","IBM Plex Mono, monospace"); c1.setAttribute("font-size","11");
+  c1.textContent = "Risk Skoru"; svg.appendChild(c1);
+
+  const c2=document.createElementNS(ns,"text"); c2.setAttribute("x",100); c2.setAttribute("y",114);
+  c2.setAttribute("text-anchor","middle"); c2.setAttribute("fill","#3FBF9E");
+  c2.setAttribute("font-family","IBM Plex Mono, monospace"); c2.setAttribute("font-size","16");
+  c2.setAttribute("font-weight","bold");
+  c2.textContent = `${score}/100`; svg.appendChild(c2);
+
+  const legend = document.getElementById("legend");
+  legend.innerHTML = "";
+  alloc.forEach((a)=>{
+    legend.innerHTML += `
+      <div class="legend-row">
+        <div class="sw" style="background:${a.color}"></div>
+        <div class="lname">${a.name}</div>
+        <div class="lval">%${a.pct}</div>
+      </div>`;
+  });
+
+  const modeTitle = scenario === "yuksek" ? "Yüksek Risk (Agresif)" : scenario === "orta" ? "Orta Risk (Dengeli)" : "Düşük Risk (Defansif)";
+  document.getElementById("formulaBox").innerHTML = `
+    <b>Dağılım Mantığı (${modeTitle}):</b><br>
+    Piyasa canlı verilerinden hesaplanan <b>Makro Risk İştah Skoru: ${score}/100</b>.<br>
+    ${score > 60 ? "🟢 Piyasa koşulları Risk-ON (İştah yüksek) olduğu için Hisse/Kripto ağırlıkları artırılmıştır." : score < 40 ? "🔴 Piyasa koşulları Risk-OFF (Stres yüksek) olduğu için Likit ve Metal ağırlığı korunmaktadır." : "🟡 Piyasa dengeli rejimde seyretmektedir."}<br>
+    <i>Mod değiştirdiğinizde portföy sınıfları sıfırdan tamamen dinamik yeniden dağıtılır.</i>
+  `;
+}
+
+document.getElementById("riskToggle").addEventListener("click", (e)=>{
+  if(e.target.classList.contains("risk-btn")){
+    document.querySelectorAll(".risk-btn").forEach(b=>b.classList.remove("active"));
+    e.target.classList.add("active");
+    renderDonut(e.target.dataset.r);
+  }
+});
+
+/* ================= REFRESH ORCHESTRATION ================= */
+let isRefreshing = false;
+async function refreshAll(){
+  if(isRefreshing) return;
+  isRefreshing = true;
+  document.getElementById("refreshBtn").textContent = "↻ Yenileniyor...";
+
+  await Promise.allSettled([
+    fetchBTC(),                             
+    fetchUSDTRY(),                          
+    fetchGoldSilverRatio(),                 
+    fetchYahooQuote("^VIX", "VIX"),         
+    fetchSPX(),                             
+    fetchDXY(),                             
+    fetchUS10Y(),                           
+    fetchUS2Y(),                            
+    fetchYahooQuote("XU100.IS", "BIST100"), 
+    fetchYahooQuote("BZ=F", "BRENT", false, "$"), 
+    fetchYahooQuote("HG=F", "BAKIR", false, "$"),
+    fetchLiveNewsRSS() // Canlı RSS Akışı
+  ]);
+
+  renderTicker();
+  updateDynamicSignalsAndComments();
+  renderPlaybook();
+  renderDonut(currentRiskScenario);
+  renderDynamicCalendar();
+
+  const label = "Son çekim: " + nowLabel();
+  document.getElementById("lastFetchLabel").textContent = label;
+  document.getElementById("lastFetchLabel2").textContent = nowLabel();
+  document.getElementById("refreshBtn").textContent = "↻ Şimdi Yenile";
+  isRefreshing = false;
+}
+document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+
+// OPTİMİZE EDİLMİŞ 15 DAKİKALIK OTOMATİK YENİLEME TIMING ENGINE (15 * 60 * 1000 ms)
+let autoRefreshTimer = setInterval(refreshAll, 15 * 60 * 1000);
+
+document.getElementById("autoRefreshChk").addEventListener("change", (e)=>{
+  if(e.target.checked){ 
+    autoRefreshTimer = setInterval(refreshAll, 15 * 60 * 1000); 
+    refreshAll(); 
+  } else { 
+    clearInterval(autoRefreshTimer); 
+  }
+});
+
+/* ================= CORRELATION MATRIX RENDER ================= */
+function corrColor(v){
+  if (Math.abs(v) < 0.12) return "transparent";
+  const t = Math.min(Math.abs(v),1);
+  if (v > 0){
+    const r = Math.round(21 + (63-21)*t), g = Math.round(24 + (191-24)*t), b = Math.round(29 + (158-29)*t);
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const r = Math.round(21 + (214-21)*t), g = Math.round(24 + (96-24)*t), b = Math.round(29 + (77-29)*t);
+    return `rgb(${r},${g},${b})`;
+  }
+}
+const corrTable = document.getElementById("corrTable");
+let thead = "<tr><th></th>" + DATA.corrAssets.map(a=>`<th>${a}</th>`).join("") + "</tr>";
+let rows = "";
+DATA.corrAssets.forEach((rowName, i)=>{
+  let cells = DATA.corrMatrix[i].map((v,j)=>{
+    if(i===j) return `<td><div class="cell dim">1.0</div></td>`;
+    const bg = corrColor(v);
+    const textColor = Math.abs(v) > 0.35 ? "#0D1013" : "var(--text-dim)";
+    return `<td><div class="cell" style="background:${bg}; color:${textColor}">${v.toFixed(2)}</div></td>`;
+  }).join("");
+  rows += `<tr><td class="rowlabel">${rowName}</td>${cells}</tr>`;
+});
+corrTable.innerHTML = thead + rows;
+
+/* ================= REGIME COMPASS (SVG) ================= */
+(function(){
+  const svg = document.getElementById("compass");
+  const ns = "http://www.w3.org/2000/svg";
+  const cx=125, cy=125, r=95;
+  function el(tag, attrs){ const e = document.createElementNS(ns, tag); for(const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  svg.appendChild(el("circle",{cx,cy,r, fill:"none", stroke:"#262E37", "stroke-width":1}));
+  svg.appendChild(el("circle",{cx,cy,r:r*0.66, fill:"none", stroke:"#1E252C", "stroke-width":1}));
+  svg.appendChild(el("circle",{cx,cy,r:r*0.33, fill:"none", stroke:"#1E252C", "stroke-width":1}));
+  svg.appendChild(el("line",{x1:cx-r,y1:cy,x2:cx+r,y2:cy, stroke:"#262E37"}));
+  svg.appendChild(el("line",{x1:cx,y1:cy-r,x2:cx,y2:cy+r, stroke:"#262E37"}));
+  const labelStyle = {fill:"#5C6570", "font-size":"10", "font-family":"IBM Plex Mono, monospace"};
+  let t1=el("text",{x:cx+r+6,y:cy+4,...labelStyle}); t1.textContent="RISK-ON"; svg.appendChild(t1);
+  let t2=el("text",{x:cx-r-58,y:cy+4,...labelStyle}); t2.textContent="RISK-OFF"; svg.appendChild(t2);
+  let t3=el("text",{x:cx-24,y:cy-r-8,...labelStyle}); t3.textContent="DOLAR GÜÇLÜ"; svg.appendChild(t3);
+  let t4=el("text",{x:cx-22,y:cy+r+16,...labelStyle}); t4.textContent="DOLAR ZAYIF"; svg.appendChild(t4);
+  const px=0.55, py=0.6;
+  const posX = cx + px*r, posY = cy + py*r;
+  svg.appendChild(el("circle",{cx:posX, cy:posY, r:9, fill:"#3FBF9E", opacity:"0.25"}));
+  svg.appendChild(el("circle",{cx:posX, cy:posY, r:5, fill:"#3FBF9E", stroke:"#0D1013", "stroke-width":1.5}));
+})();
+
+// İlk yükleme ve veri çekimi
+refreshAll();
+</script>
+</body>
+</html>
