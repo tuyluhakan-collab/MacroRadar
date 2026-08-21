@@ -60,18 +60,25 @@
     margin-bottom:18px;
   }
 
-  .ticker{
-    display:grid; grid-template-columns:repeat(auto-fit, minmax(126px,1fr));
-    gap:1px; background:var(--line); border:1px solid var(--line);
-    border-radius:10px; overflow:hidden; margin-bottom:26px;
+  .ticker-section-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px; font-weight:600; color:var(--text-dim);
+    margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em;
+    display:flex; align-items:center; gap:6px;
   }
-  .tick{background:var(--panel); padding:14px 14px 12px; display:flex; flex-direction:column; gap:4px; position:relative;}
-  .tick .sym{font-size:11px; color:var(--text-faint); letter-spacing:.06em; text-transform:uppercase; font-family:'IBM Plex Mono',monospace;}
-  .tick .val{font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:600;}
-  .tick .chg{font-family:'IBM Plex Mono', monospace; font-size:12px;}
-  .tick .updated{font-size:9.5px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+
+  .ticker{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line);
+    border-radius:10px; overflow:hidden; margin-bottom:18px;
+  }
+  .tick{background:var(--panel); padding:12px 12px 10px; display:flex; flex-direction:column; gap:3px; position:relative;}
+  .tick .sym{font-size:10.5px; color:var(--text-faint); letter-spacing:.05em; text-transform:uppercase; font-family:'IBM Plex Mono',monospace;}
+  .tick .val{font-family:'IBM Plex Mono', monospace; font-size:16.5px; font-weight:600;}
+  .tick .chg{font-family:'IBM Plex Mono', monospace; font-size:11.5px;}
+  .tick .updated{font-size:9px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; margin-top:2px;}
   .up{color:var(--teal);} .down{color:var(--red);} .flat{color:var(--text-dim);}
-  .tick .status-dot{position:absolute; top:10px; right:10px; width:7px; height:7px; border-radius:50%;}
+  .tick .status-dot{position:absolute; top:8px; right:8px; width:6px; height:6px; border-radius:50%;}
   .status-dot.canli{background:var(--teal); box-shadow:0 0 6px var(--teal);}
   .status-dot.snapshot{background:var(--amber);}
   .status-dot.hata{background:var(--red);}
@@ -96,7 +103,7 @@
   /* PLAYBOOK */
   .playbook{display:flex; flex-direction:column; gap:8px;}
   .pb-row{
-    display:grid; grid-template-columns:110px 1fr 200px; gap:12px; align-items:center;
+    display:grid; grid-template-columns:110px 1fr 220px; gap:12px; align-items:center;
     border:1px solid var(--line-soft); border-radius:8px; padding:11px 14px; background:var(--panel2);
   }
   @media (max-width:800px){ .pb-row{grid-template-columns:1fr; } }
@@ -188,7 +195,7 @@
   <header>
     <div class="title-block">
       <h1>MacroRadar Paneli</h1>
-      <div class="sub">VIX · DXY · US10Y/US2Y · XAU/XAG · SPX · BRENT · BAKIR · BTC · BIST100 &nbsp;—&nbsp; Canlı Küresel & Türkiye Makro Görünüm</div>
+      <div class="sub">VIX · DXY · US10Y/US2Y · XAU/XAG · BRENT · BAKIR · BTC &nbsp;|&nbsp; USD/TRY · Gram Altın · BIST100 · TR02/TR10</div>
     </div>
     <div class="status-pill"><span class="dot"></span> <span id="liveClock">--:--:--</span> &nbsp;·&nbsp; Son yenileme: <span id="lastFetchLabel2">henüz yok</span></div>
   </header>
@@ -204,8 +211,13 @@
     </div>
   </div>
 
-  <!-- TICKER -->
-  <div class="ticker" id="ticker"></div>
+  <!-- GLOBAL TICKER BAND -->
+  <div class="ticker-section-title">🌐 KÜRESEL MAKRO PİYASALAR</div>
+  <div class="ticker" id="globalTicker"></div>
+
+  <!-- TURKEY TICKER BAND -->
+  <div class="ticker-section-title">🇹🇷 TÜRKİYE PİYASASI & GRAM ALTIN</div>
+  <div class="ticker" id="turkeyTicker" style="margin-bottom:26px;"></div>
 
   <!-- REGIME + SIGNALS -->
   <div class="grid-2">
@@ -219,8 +231,8 @@
     </div>
 
     <div class="panel">
-      <h2>⚡ Kural Bazlı Sinyaller</h2>
-      <div class="desc">Canlı veriye göre anlık hesaplanan kural bazlı durumlar.</div>
+      <h2>⚡ Kural Bazlı Sinyaller & Türkiye Yansıması</h2>
+      <div class="desc">Canlı veriye göre hesaplanan kural bazlı durumlar ve Türkiye piyasasına etkisi.</div>
       <div class="sig-list" id="sigList"></div>
     </div>
   </div>
@@ -241,8 +253,8 @@
 
   <!-- ACTIONABLE PLAYBOOK -->
   <div class="panel" style="margin-bottom:18px;">
-    <h2>🧩 Rejime Göre Varlık Geçiş Rehberi</h2>
-    <div class="desc">Yukarıdaki korelasyonların "hangi durumda ne yapılır" karşılığı.</div>
+    <h2>🧩 Rejime Göre Küresel & Türkiye Varlık Geçiş Rehberi</h2>
+    <div class="desc">Küresel makro rejim değişimlerinin Türkiye piyasasındaki BIST100, Gram Altın ve Mevduat yansımaları.</div>
     <div class="playbook" id="playbookList"></div>
   </div>
 
@@ -295,7 +307,7 @@
 <script>
 /* ================= INITIAL DATA & SNAPSHOT FALLBACKS ================= */
 const DATA = {
-  ticker: [
+  globalTicker: [
     {sym:"VIX",       val:"15.84",    chg:"+0.00%", dir:"flat",        raw:15.84},
     {sym:"SPX",       val:"5,500.00", chg:"+0.00%", dir:"flat",        raw:5500.00},
     {sym:"DXY",       val:"101.20",   chg:"+0.00%", dir:"flat",        raw:101.20},
@@ -307,30 +319,38 @@ const DATA = {
     {sym:"BRENT",     val:"$78.50",   chg:"+0.00%", dir:"flat",        raw:78.50},
     {sym:"BAKIR",     val:"$4.15/lb", chg:"+0.00%", dir:"flat",        raw:4.15},
     {sym:"BTC/USD",   val:"$60,000",  chg:"+0.00%", dir:"flat",        raw:60000},
-    {sym:"BIST100",   val:"10,000",   chg:"+0.00%", dir:"flat",        raw:10000},
-    {sym:"USD/TRY",   val:"34.00",    chg:"+0.00%", dir:"flat",        raw:34.00},
   ],
-  corrAssets: ["VIX","DXY","US10Y","XAU","XAG","SPX","BTC","BIST","BRENT","BAKIR"],
+  turkeyTicker: [
+    {sym:"USD/TRY",     val:"34.00",      chg:"+0.00%", dir:"flat", raw:34.00},
+    {sym:"GRAM ALTIN",  val:"₺2,732",     chg:"canlı formül", dir:"flat", raw:2732},
+    {sym:"BIST100",     val:"10,000",     chg:"+0.00%", dir:"flat", raw:10000},
+    {sym:"TR02 (2Y)",   val:"%41.50",     chg:"+0.00%", dir:"flat", raw:41.50},
+    {sym:"TR10 (10Y)",  val:"%28.30",     chg:"+0.00%", dir:"flat", raw:28.30},
+  ],
+  corrAssets: ["VIX","DXY","US10Y","XAU","GAU/TRY","SPX","BIST","BTC","BRENT","BAKIR"],
   corrMatrix: [
-    [ 1.00,  0.10,  0.05, 0.15, 0.10, -0.80, -0.40, -0.55,  0.15, -0.35],
-    [ 0.10,  1.00,  0.30,-0.45,-0.40,  0.10, -0.30, -0.45, -0.35, -0.40],
-    [ 0.05,  0.30,  1.00,-0.30,-0.25, -0.10, -0.15, -0.35,  0.30,  0.20],
-    [ 0.15, -0.45, -0.30, 1.00, 0.85,  0.05,  0.20,  0.10,  0.20,  0.15],
-    [ 0.10, -0.40, -0.25, 0.85, 1.00,  0.10,  0.25,  0.15,  0.20,  0.45],
-    [-0.80,  0.10, -0.10, 0.05, 0.10,  1.00,  0.45,  0.55,  0.10,  0.50],
-    [-0.40, -0.30, -0.15, 0.20, 0.25,  0.45,  1.00,  0.30,  0.10,  0.20],
-    [-0.55, -0.45, -0.35, 0.10, 0.15,  0.55,  0.30,  1.00, -0.15,  0.35],
-    [ 0.15, -0.35,  0.30, 0.20, 0.20,  0.10,  0.10, -0.15,  1.00,  0.40],
-    [-0.35, -0.40,  0.20, 0.15, 0.45,  0.50,  0.20,  0.35,  0.40,  1.00],
+    [ 1.00,  0.10,  0.05, 0.15, -0.20, -0.80, -0.55, -0.40,  0.15, -0.35],
+    [ 0.10,  1.00,  0.30,-0.45,  0.35,  0.10, -0.45, -0.30, -0.35, -0.40],
+    [ 0.05,  0.30,  1.00,-0.30, -0.15, -0.10, -0.35, -0.15,  0.30,  0.20],
+    [ 0.15, -0.45, -0.30, 1.00,  0.80,  0.05,  0.10,  0.20,  0.20,  0.15],
+    [-0.20,  0.35, -0.15, 0.80,  1.00,  0.00,  0.15,  0.25,  0.25,  0.10],
+    [-0.80,  0.10, -0.10, 0.05,  0.00,  1.00,  0.55,  0.45,  0.10,  0.50],
+    [-0.55, -0.45, -0.35, 0.10,  0.15,  0.55,  1.00,  0.30, -0.15,  0.35],
+    [-0.40, -0.30, -0.15, 0.20,  0.25,  0.45,  0.30,  1.00,  0.10,  0.20],
+    [ 0.15, -0.35,  0.30, 0.20,  0.25,  0.10, -0.15,  0.10,  1.00,  0.40],
+    [-0.35, -0.40,  0.20, 0.15,  0.10,  0.50,  0.35,  0.20,  0.40,  1.00],
   ],
   liveNews: []
 };
 
-DATA.ticker.forEach(t=>{ t.status = "snapshot"; t.updated = null; });
+DATA.globalTicker.forEach(t=>{ t.status = "snapshot"; t.updated = null; });
+DATA.turkeyTicker.forEach(t=>{ t.status = "snapshot"; t.updated = null; });
 
 function fmtNum(n, digits=2){ return Number(n).toLocaleString("tr-TR", {minimumFractionDigits:digits, maximumFractionDigits:digits}); }
 function nowLabel(){ return new Date().toLocaleTimeString("tr-TR", {hour:'2-digit', minute:'2-digit', second:'2-digit'}); }
-function findTick(sym){ return DATA.ticker.find(t=>t.sym===sym); }
+function findTick(sym){ 
+  return DATA.globalTicker.find(t=>t.sym===sym) || DATA.turkeyTicker.find(t=>t.sym===sym); 
+}
 
 /* ================= LIVE CLOCK ================= */
 function tickClock(){
@@ -342,14 +362,14 @@ tickClock();
 setInterval(tickClock, 1000);
 
 /* ================= TICKER RENDER ================= */
-const tickerEl = document.getElementById("ticker");
-function renderTicker(){
-  tickerEl.innerHTML = "";
-  DATA.ticker.forEach(t=>{
+function renderTickerGroup(containerId, dataArray){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  dataArray.forEach(t=>{
     const dirClass = t.dir==="up" ? "up" : t.dir==="down" ? "down" : "flat";
     const dotClass = t.status === "canli" ? "canli" : t.status === "hata" ? "hata" : "snapshot";
     const updatedTxt = t.updated ? `güncellendi ${t.updated}` : "anlık görüntü";
-    tickerEl.innerHTML += `
+    el.innerHTML += `
       <div class="tick">
         <span class="status-dot ${dotClass}"></span>
         <div class="sym">${t.sym}</div>
@@ -358,6 +378,11 @@ function renderTicker(){
         <div class="updated">${updatedTxt}</div>
       </div>`;
   });
+}
+
+function renderTicker(){
+  renderTickerGroup("globalTicker", DATA.globalTicker);
+  renderTickerGroup("turkeyTicker", DATA.turkeyTicker);
 }
 renderTicker();
 
@@ -396,6 +421,7 @@ async function fetchWithProxyFallback(targetUrl) {
 
 async function fetchYahooQuote(symbolsArray, tickSym, isYield = false, prefix = "", digits = 2) {
   const t = findTick(tickSym);
+  if (!t) return;
   
   for (const symbol of symbolsArray) {
     try {
@@ -477,6 +503,24 @@ async function fetchMetal(symbol, tickSym){
   }
 }
 
+/* CANLI GRAM ALTIN HESAPLAMA MOTORU */
+function calculateGramGold(){
+  const xau = findTick("XAU/USD").raw;
+  const usdtry = findTick("USD/TRY").raw;
+  const t = findTick("GRAM ALTIN");
+
+  if (xau && usdtry) {
+    const gramGoldPrice = (xau / 31.1035) * usdtry;
+    t.val = "₺" + fmtNum(gramGoldPrice, 0);
+    t.chg = "Formül: (Ons/31.1)×USDTRY";
+    t.raw = gramGoldPrice;
+    t.status = "canli";
+    t.updated = nowLabel();
+  } else {
+    t.status = "hata";
+  }
+}
+
 async function fetchGoldSilverRatio(){
   const xau = await fetchMetal("XAU", "XAU/USD");
   const xag = await fetchMetal("XAG", "XAG/USD");
@@ -495,23 +539,19 @@ function getNewsBucket(itemTimestamp) {
   
   if (isNaN(pubDate.getTime())) return "arsiv";
 
-  // Bulunduğumuz haftanın başlangıcı (Pazartesi 00:00:00)
   const startOfWeek = new Date(now);
   const day = startOfWeek.getDay(); 
   const diffToMonday = (day === 0 ? -6 : 1 - day);
   startOfWeek.setDate(startOfWeek.getDate() + diffToMonday);
   startOfWeek.setHours(0, 0, 0, 0);
 
-  // Bulunduğumuz haftanın bitişi (Pazar 23:59:59)
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(endOfWeek.getDate() + 6);
   endOfWeek.setHours(23, 59, 59, 999);
 
-  // Önümüzdeki haftanın bitişi
   const endOfNextWeek = new Date(endOfWeek);
   endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
 
-  // Bu ayın son günü
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   if (pubDate >= startOfWeek && pubDate <= endOfWeek) {
@@ -526,7 +566,6 @@ function getNewsBucket(itemTimestamp) {
 }
 
 async function fetchLiveNewsRSS() {
-  // when:7d parametresi ile Google News'e son 7 gün kısıtı koyuluyor
   const feeds = [
     "https://news.google.com/rss/search?q=fed+inflation+economy+markets+tcmb+when:7d&hl=en-US&gl=US&ceid=US:en",
     "https://news.google.com/rss/search?q=bist100+tcmb+faiz+dolar+borsa+enflasyon+when:7d&hl=tr-TR&gl=TR&ceid=TR:tr",
@@ -547,7 +586,7 @@ async function fetchLiveNewsRSS() {
             link: item.link,
             timestamp: isoDate,
             comment: generateAutoMacroComment(item.title),
-            bucket: getNewsBucket(isoDate) // Dinamik tarih doğrulamalı kova tespiti
+            bucket: getNewsBucket(isoDate)
           });
         });
       }
@@ -563,15 +602,15 @@ async function fetchLiveNewsRSS() {
 function generateAutoMacroComment(title) {
   const t = title.toLowerCase();
   if (t.includes("inflation") || t.includes("cpi") || t.includes("enflasyon")) {
-    return "💡 Enflasyon odaklı veri akışı: Tahvil getirileri, DXY ve Ons Altın tarafında oynaklığı artırabilir.";
+    return "💡 Enflasyon odaklı veri akışı: Tahvil getirileri, DXY ve Gram Altın tarafında hareketlilik yaratabilir.";
   } else if (t.includes("fed") || t.includes("powell") || t.includes("rate") || t.includes("tcmb") || t.includes("faiz")) {
-    return "💡 Merkez bankası politika beklentisi: DXY Dolar Endeksi ve BIST/Global borsalar için ana yön belirleyici.";
+    return "💡 Merkez bankası politika beklentisi: BIST100, Mevduat faizi ve Dolar/TL dengesi için ana belirleyici.";
   } else if (t.includes("oil") || t.includes("energy") || t.includes("petrol")) {
-    return "💡 Enerji maliyeti akışı: Brent petrol kanalı üzerinden küresel enflasyon beklentilerini etkiler.";
+    return "💡 Enerji maliyeti akışı: Türkiye cari açığı ve cari denge beklentilerini etkiler.";
   } else if (t.includes("bist") || t.includes("bursa") || t.includes("hisse") || t.includes("türkiye")) {
     return "💡 Yurtiçi hisse senedi piyasası ve yabancı yatırımcı akış dinamiği.";
   } else {
-    return "💡 Küresel piyasalarda takip edilen makro gelişme / haber akışı.";
+    return "💡 Küresel ve yerel piyasalarda takip edilen makro gelişme.";
   }
 }
 
@@ -640,6 +679,8 @@ function updateDynamicSignalsAndComments() {
   const us2y = findTick("US2Y").raw;
   const brent = findTick("BRENT").raw;
   const copper = findTick("BAKIR").raw;
+  const usdtry = findTick("USD/TRY").raw;
+  const gramGold = findTick("GRAM ALTIN").raw;
   const yieldSpread = (us10y - us2y).toFixed(2);
 
   const container = document.getElementById("compassLabels");
@@ -647,18 +688,17 @@ function updateDynamicSignalsAndComments() {
   const isDxyWeak = dxy < 100;
   
   let regimeText = "";
-  if (isRiskOn && isDxyWeak) regimeText = "Risk-ON + Dolar Zayıf (Gelişmekte Olan Piyasalar / Metal Tarafı Destekli)";
-  else if (isRiskOn && !isDxyWeak) regimeText = "Risk-ON + Dolar Güçlü (ABD Hisse Dominant)";
-  else if (!isRiskOn && isDxyWeak) regimeText = "Risk-OFF + Dolar Zayıf (Kripto / Emtia Sıcak Bölge)";
-  else regimeText = "Risk-OFF + Dolar Güçlü (Tam Güvenli Liman Modu)";
+  if (isRiskOn && isDxyWeak) regimeText = "Risk-ON + Dolar Zayıf (Gelişmekte Olan Piyasalar & BIST100 Destekli)";
+  else if (isRiskOn && !isDxyWeak) regimeText = "Risk-ON + Dolar Güçlü (ABD Hisse Dominant, BIST Nötr)";
+  else if (!isRiskOn && isDxyWeak) regimeText = "Risk-OFF + Dolar Zayıf (Gram Altın Sıcak Bölge)";
+  else regimeText = "Risk-OFF + Dolar Güçlü (Gram Altın Korunaklı, BIST Baskılanır)";
 
   container.innerHTML = `
     <div class="regime-tag">● Rejim: ${regimeText}</div>
     <p>VIX <b>${vix.toFixed(2)}</b> — ${vix < 20 ? "Oynaklık düşük, risk iştahı açık." : "Oynaklık yüksek, piyasalar gergin."}</p>
-    <p>DXY <b>${dxy.toFixed(2)}</b> seviyesinde izleniyor.</p>
-    <p>US10Y <b>%${us10y.toFixed(2)}</b>, US2Y <b>%${us2y.toFixed(2)}</b> — Getiri eğrisi farkı: <b>${yieldSpread >= 0 ? '+' : ''}${yieldSpread}bp</b> (${yieldSpread >= 0 ? "Normal eğri" : "Ters eğri / Resesyon riski"}).</p>
-    <p>Brent <b>$${brent.toFixed(2)}</b> seviyesinde — Enflasyon ve jeopolitik risk göstergesi.</p>
-    <p>Bakır <b>$${copper.toFixed(2)}/lb</b> — Küresel sanayi ve büyüme beklentileri simgesi.</p>
+    <p>DXY <b>${dxy.toFixed(2)}</b> — Zayıf Dolar EM (BIST100) lehine likidite yaratır.</p>
+    <p>Gram Altın canlı formülle <b>₺${fmtNum(gramGold, 0)}</b> seviyesinde hesaplanıyor (USD/TRY: ${usdtry.toFixed(2)}).</p>
+    <p>US10Y-US2Y Farkı: <b>${yieldSpread >= 0 ? '+' : ''}${yieldSpread}bp</b>.</p>
   `;
 
   const sigList = document.getElementById("sigList");
@@ -666,24 +706,19 @@ function updateDynamicSignalsAndComments() {
 
   const sigs = [
     {
-      flag: vix < 20 ? "ON" : "OFF",
-      cls: vix < 20 ? "on" : "off",
-      text: `<b>VIX (${vix.toFixed(2)}):</b> ${vix < 20 ? "20 altında — Hisse senetlerinde oynaklık primi düşük, risk iştahı destekleniyor." : "20 üzerinde — Piyasada stres ve korunma talebi yüksek."}`
+      flag: vix < 20 && dxy < 101 ? "ON" : "OFF",
+      cls: vix < 20 && dxy < 101 ? "on" : "off",
+      text: `<b>BIST100 & EM Risk İştahı:</b> ${vix < 20 && dxy < 101 ? "Küresel koşullar gelişmekte olan ülke borsalarını ve BIST100'ü destekliyor." : "Küresel stres veya güçlü dolar BIST100 üzerinde yabancı çıkış riski yaratıyor."}`
     },
     {
-      flag: dxy < 100 ? "ON" : "İZLE",
-      cls: dxy < 100 ? "on" : "watch",
-      text: `<b>DXY Dolar Endeksi (${dxy.toFixed(2)}):</b> ${dxy < 100 ? "100 altında — Zayıf dolar, emtia ve gelişmekte olan ülke varlıklarını destekliyor." : "100 üzerinde — Güçlü dolar, küresel likiditeyi sıkılaştırıyor."}`
+      flag: "AKTİF",
+      cls: "on",
+      text: `<b>Gram Altın Çift Yönlü Koruma (₺${fmtNum(gramGold, 0)}):</b> Ons Altın ve Dolar/TL ortaklığı sayesinde küresel krizlerde Döviz bacağından, DXY düşüşünde Ons bacağından prim yapar.`
     },
     {
       flag: yieldSpread >= 0 ? "ON" : "ANOMALİ",
       cls: yieldSpread >= 0 ? "on" : "watch",
-      text: `<b>Getiri Eğrisi (US10Y - US2Y = ${yieldSpread}bp):</b> ${yieldSpread >= 0 ? "Pozitif getiri eğrisi — Resesyon fiyatlaması zayıf." : "Ters getiri eğrisi (US2Y > US10Y) — Tarihsel resesyon öncü göstergesi aktif!"}`
-    },
-    {
-      flag: brent > 90 ? "İZLE" : "ON",
-      cls: brent > 90 ? "watch" : "on",
-      text: `<b>Brent Petrol ($${brent.toFixed(2)}):</b> ${brent > 90 ? "90$ üzerinde — Enerji kaynaklı enflasyonist baskı riski canlı." : "Maliyet baskıları nispeten dengeli."}`
+      text: `<b>Getiri Eğrisi (US10Y - US2Y = ${yieldSpread}bp):</b> ${yieldSpread >= 0 ? "Normal getiri eğrisi — Küresel resesyon riski düşük." : "Ters getiri eğrisi — Resesyon riski canlı!"}`
     }
   ];
 
@@ -691,7 +726,6 @@ function updateDynamicSignalsAndComments() {
     sigList.innerHTML += `<div class="sig"><div class="flag ${s.cls}">${s.flag}</div><div class="stext">${s.text}</div></div>`;
   });
 
-  // Rejim Pusulası Üzerinde Noktayı Anlık VIX ve DXY'ye Göre Dinamik Oynat
   renderDynamicCompassDot(vix, dxy);
 }
 
@@ -702,11 +736,9 @@ function renderDynamicCompassDot(vix, dxy) {
 
   const cx = 125, cy = 125, r = 95;
   
-  // VIX Normalizasyonu (10 ile 30 arası) -> Sol (-1) / Sağ (+1)
   let vixFactor = (20 - vix) / 10; 
   vixFactor = Math.max(-1, Math.min(1, vixFactor));
 
-  // DXY Normalizasyonu (96 ile 106 arası) -> Yukarı (-1) / Aşağı (+1)
   let dxyFactor = (dxy - 101) / 5;
   dxyFactor = Math.max(-1, Math.min(1, dxyFactor));
 
@@ -722,52 +754,28 @@ function renderDynamicCompassDot(vix, dxy) {
 /* ================= PLAYBOOK RULES ================= */
 const PLAYBOOK_RULES = [
   {
-    label:"VIX yükselirse (>25)",
+    label:"VIX Yükselirse (>25) — Küresel Türbülans",
     check: ()=> findTick("VIX").raw > 25,
-    corrRef:"VIX-SPX(-0.80), VIX-BIST(-0.55), VIX-BTC(-0.40)",
-    up:["Likit","Altın"], down:["Hisse","Kripto","BIST"],
+    corrRef:"VIX-BIST(-0.55), VIX-GAU(-0.20)",
+    up:["Gram Altın (Defansif)", "TL Mevduat / Likit"], down:["BIST100", "Global Hisse"],
   },
   {
-    label:"VIX düşükse (<20)",
-    check: ()=> findTick("VIX").raw < 20,
-    corrRef:"VIX-SPX(-0.80), VIX-BAKIR(-0.35)",
-    up:["Hisse","Kripto"], down:["Aşırı Likit"],
-  },
-  {
-    label:"DXY güçlenirse (>102)",
-    check: ()=> findTick("DXY").raw > 102,
-    corrRef:"DXY-XAU(-0.45), DXY-BIST(-0.45), DXY-BAKIR(-0.40)",
-    up:["Likit (USD)"], down:["Altın","Gümüş","BIST","Kripto"],
-  },
-  {
-    label:"DXY zayıflarsa (<100)",
+    label:"DXY Zayıflarsa (<100) — Küresel Bolluk",
     check: ()=> findTick("DXY").raw < 100,
-    corrRef:"DXY-XAU(-0.45), DXY-BIST(-0.45)",
-    up:["Altın","Gümüş","BIST","Kripto"], down:["Aşırı Likit (USD)"],
+    corrRef:"DXY-BIST(-0.45), DXY-XAU(-0.45)",
+    up:["BIST100 (Bankacılık)", "Gram Altın (Ons Tarafı)"], down:["Aşırı Likit Döviz"],
   },
   {
-    label:"Getiri eğrisi tersine döner (US2Y > US10Y)",
-    check: ()=> findTick("US2Y").raw > findTick("US10Y").raw,
-    corrRef:"Resesyon öncü göstergesi",
-    up:["Likit","Altın"], down:["Hisse","Kripto"],
+    label:"Ons Altın Yükselir & Dolar Yatay Seyrederse",
+    check: ()=> findTick("XAU/USD").raw > 2500,
+    corrRef:"XAU-GAU(+0.80)",
+    up:["Gram Altın", "Gümüş"], down:[],
   },
   {
-    label:"AU/AG oranı düşerse (<80, gümüş öne çıkar)",
-    check: ()=> findTick("AU/AG Oranı").raw < 80,
-    corrRef:"XAU-XAG(+0.85), XAG-BAKIR(+0.45)",
-    up:["Gümüş (metal içinde taktik ağırlık)"], down:[],
-  },
-  {
-    label:"Brent yükselirse (>85, enflasyon riski)",
-    check: ()=> findTick("BRENT").raw > 85,
-    corrRef:"BRENT-US10Y(+0.30), BRENT-XAU(+0.20)",
-    up:["Kıymetli Metal","Kısa Vadeli Likit"], down:["Uzun Vadeli Büyüme Hisseleri"],
-  },
-  {
-    label:"Bakır düşerse (<4.0, büyüme yavaşlama sinyali)",
-    check: ()=> findTick("BAKIR").raw < 4.0,
-    corrRef:"BAKIR-SPX(+0.50), BAKIR-BIST(+0.35)",
-    up:["Likit"], down:["Hisse","BIST"],
+    label:"Getiri Eğrisi Pozitif & VIX Düşük (<20)",
+    check: ()=> findTick("VIX").raw < 20 && (findTick("US10Y").raw - findTick("US2Y").raw >= 0),
+    corrRef:"Risk-ON Büyüme Modu",
+    up:["BIST100", "Global Hisse", "Kripto"], down:["Gram Altın (Sınırlı)"],
   },
 ];
 
@@ -848,10 +856,10 @@ function calculateDynamicAllocation(scenario) {
   return {
     score,
     alloc: [
-      { name: "Likit (Nakit/Mevduat)", pct: likit, color: "#5AA9E6" },
-      { name: "Kıymetli Metal (Altın/Gümüş)", pct: metal, color: "#E3B341" },
+      { name: "Likit (TL Mevduat/Nakit)", pct: likit, color: "#5AA9E6" },
+      { name: "Gram / Ons Altın & Gümüş", pct: metal, color: "#E3B341" },
       { name: "Kripto Varlıklar", pct: kripto, color: "#A78BDE" },
-      { name: "Hisse Senedi (BIST/Global)", pct: hisse, color: "#3FBF9E" }
+      { name: "Hisse Senedi (BIST100 / Global)", pct: hisse, color: "#3FBF9E" }
     ]
   };
 }
@@ -912,7 +920,7 @@ function renderDonut(scenario){
   document.getElementById("formulaBox").innerHTML = `
     <b>Dağılım Mantığı (${modeTitle}):</b><br>
     Piyasa canlı verilerinden hesaplanan <b>Makro Risk İştah Skoru: ${score}/100</b>.<br>
-    ${score > 60 ? "🟢 Piyasa koşulları Risk-ON (İştah yüksek) olduğu için Hisse/Kripto ağırlıkları artırılmıştır." : score < 40 ? "🔴 Piyasa koşulları Risk-OFF (Stres yüksek) olduğu için Likit ve Metal ağırlığı korunmaktadır." : "🟡 Piyasa dengeli rejimde seyretmektedir."}<br>
+    ${score > 60 ? "🟢 Piyasa koşulları Risk-ON olduğu için BIST100/Hisse ve Kripto ağırlıkları artırılmıştır." : score < 40 ? "🔴 Piyasa koşulları Risk-OFF olduğu için TL Mevduat ve Gram Altın ağırlığı korunmaktadır." : "🟡 Piyasa dengeli rejimde seyretmektedir."}<br>
     <i>Mod değiştirdiğinizde portföy sınıfları sıfırdan tamamen dinamik yeniden dağıtılır.</i>
   `;
 }
@@ -942,11 +950,14 @@ async function refreshAll(){
     fetchYahooQuote(["^TNX"], "US10Y", true),                           
     fetchYahooQuote(["^IRX"], "US2Y", true),                            
     fetchYahooQuote(["XU100.IS", "TURK"], "BIST100"), 
+    fetchYahooQuote(["TR02.IS", "TURK2Y=X"], "TR02 (2Y)", true), 
+    fetchYahooQuote(["TR10.IS", "TURK10Y=X"], "TR10 (10Y)", true), 
     fetchYahooQuote(["BZ=F", "BNO"], "BRENT", false, "$"), 
     fetchYahooQuote(["HG=F", "CPER"], "BAKIR", false, "$"),
     fetchLiveNewsRSS()
   ]);
 
+  calculateGramGold(); // Ons ve USD/TRY çekildikten sonra Gram Altın canlı hesaplanır
   renderTicker();
   updateDynamicSignalsAndComments();
   renderPlaybook();
