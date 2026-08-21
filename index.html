@@ -144,10 +144,11 @@
   .formula-box b{color:var(--text);}
 
   /* NEWS & CALENDAR TABS */
-  .news-tabs{display:flex; gap:8px; margin-bottom:14px; border-bottom:1px solid var(--line-soft); padding-bottom:8px;}
-  .tab-btn{font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:5px 10px; background:transparent; border:1px solid transparent; border-radius:5px; color:var(--text-dim); cursor:pointer;}
-  .tab-btn.active{background:var(--panel2); border-color:var(--line); color:var(--teal); font-weight:600;}
-  
+  .news-tabs{display:flex; gap:6px; margin-bottom:14px; border-bottom:1px solid var(--line-soft); padding-bottom:8px; flex-wrap:wrap;}
+  .tab-btn{font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:6px 12px; background:transparent; border:1px solid transparent; border-radius:5px; color:var(--text-dim); cursor:pointer; transition:.15s;}
+  .tab-btn.active{background:rgba(63,191,158,.14); border-color:rgba(63,191,158,.4); color:var(--teal); font-weight:600;}
+  .tab-btn:hover{color:var(--text);}
+
   .cal-item{display:flex; flex-direction:column; gap:6px; padding:12px 0; border-bottom:1px solid var(--line-soft);}
   .cal-item:last-child{border-bottom:none;}
   .cal-header{display:flex; justify-content:space-between; align-items:center;}
@@ -155,10 +156,11 @@
     font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700;
     padding:2px 8px; border-radius:4px; text-transform:uppercase;
   }
-  .cal-badge.son-24{background:rgba(227,179,65,.18); color:var(--amber); border:1px solid rgba(227,179,65,.4);}
-  .cal-badge.haftalik{background:rgba(90,169,230,.18); color:var(--blue); border:1px solid rgba(90,169,230,.4);}
-  .cal-badge.gecmis{background:rgba(140,150,161,.12); color:var(--text-dim); border:1px solid var(--line);}
-  .cal-badge.fomc{background:rgba(167,139,222,.18); color:var(--purple); border:1px solid rgba(167,139,222,.4);}
+  .cal-badge.bu-hafta{background:rgba(63,191,158,.18); color:var(--teal); border:1px solid rgba(63,191,158,.4);}
+  .cal-badge.gelecek-hafta{background:rgba(90,169,230,.18); color:var(--blue); border:1px solid rgba(90,169,230,.4);}
+  .cal-badge.bu-ay{background:rgba(167,139,222,.18); color:var(--purple); border:1px solid rgba(167,139,222,.4);}
+  .cal-badge.arsiv{background:rgba(140,150,161,.12); color:var(--text-dim); border:1px solid var(--line);}
+  
   .cal-time{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-faint);}
   .cal-title{font-size:13.5px; font-weight:600; color:var(--text);}
   .cal-title a{color:var(--text); text-decoration:none; transition:.15s;}
@@ -263,16 +265,16 @@
       <div class="formula-box" id="formulaBox"></div>
     </div>
 
-    <!-- DYNAMIC NEWS & WEEKLY CALENDAR PANEL -->
+    <!-- TIME-BASED DYNAMIC NEWS & CALENDAR PANEL -->
     <div class="panel">
-      <h2>📡 Küresel & Türkiye Makro Veri Akışı ve Haftalık Ajanda</h2>
-      <div class="desc">Anlık sıcak haberler ile haftalık takip edilmesi gereken kritik ekonomik takvimi bir arada sunar.</div>
+      <h2>📡 Zaman Odaklı Küresel & Türkiye Makro Ajandası</h2>
+      <div class="desc">İlk açılışta varsayılan olarak **Bu Hafta** açık gelir. Sekmelerden döneme göre hızlıca geçiş yapabilirsiniz.</div>
       
       <div class="news-tabs" id="newsTabs">
-        <button class="tab-btn active" data-tab="tum">Tümü</button>
-        <button class="tab-btn" data-tab="son24">Anlık / Son 24 Saat</button>
-        <button class="tab-btn" data-tab="haftalik">Haftalık Kritik Veriler</button>
-        <button class="tab-btn" data-tab="turkiye">Türkiye / BIST100</button>
+        <button class="tab-btn active" data-tab="bu-hafta">🟢 Bu Hafta</button>
+        <button class="tab-btn" data-tab="gelecek-hafta">🔵 Önümüzdeki Hafta</button>
+        <button class="tab-btn" data-tab="bu-ay">🟣 Bu Ayın Geri Kalanı</button>
+        <button class="tab-btn" data-tab="arsiv">⚪ Arşiv Akışı</button>
       </div>
 
       <div id="calList"></div>
@@ -483,16 +485,15 @@ async function fetchGoldSilverRatio(){
   } else { t.status = "hata"; }
 }
 
-/* ================= ENHANCED MULTI-SOURCE & WEEKLY CALENDAR ENGINE ================= */
+/* ================= TIME-BUCKETED NEWS & AGENDA ENGINE ================= */
 async function fetchLiveNewsRSS() {
   const feeds = [
     "https://news.google.com/rss/search?q=fed+inflation+economy+markets+tcmb&hl=en-US&gl=US&ceid=US:en",
     "https://news.google.com/rss/search?q=bist100+tcmb+faiz+dolar+borsa+enflasyon&hl=tr-TR&gl=TR&ceid=TR:tr",
-    "https://news.google.com/rss/search?q=fomc+ecb+cpi+nonfarm+payrolls&hl=en-US&gl=US&ceid=US:en",
     "https://finance.yahoo.com/news/rssindex"
   ];
 
-  let allArticles = [];
+  let fetchedLiveItems = [];
 
   for (const feedUrl of feeds) {
     try {
@@ -500,12 +501,12 @@ async function fetchLiveNewsRSS() {
       const data = await fetchJSON(apiUrl, 5000);
       if (data && data.items && data.items.length > 0) {
         data.items.forEach(item => {
-          allArticles.push({
+          fetchedLiveItems.push({
             title: item.title,
             link: item.link,
             timestamp: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
             comment: generateAutoMacroComment(item.title),
-            type: "anlik"
+            bucket: "bu-hafta" // Canlı RSS akışıvarsayılan olarak bu hafta akışına düşer
           });
         });
       }
@@ -514,55 +515,72 @@ async function fetchLiveNewsRSS() {
     }
   }
 
-  // Sabit ve periyodik takip edilen HAFTALIK KRİTİK MAKRO AJANDA verilerini entegre et
-  const weeklyMacroAgenda = getWeeklyMacroAgenda();
+  // Dinamik Zaman Bloklu Makro Ajanda
+  const structuredAgenda = getTimeBucketAgenda();
   
-  const uniqueArticles = Array.from(new Map(allArticles.map(item => [item.title, item])).values());
-  DATA.liveNews = [...weeklyMacroAgenda, ...uniqueArticles.slice(0, 15)];
+  const uniqueLive = Array.from(new Map(fetchedLiveItems.map(item => [item.title, item])).values());
+  DATA.liveNews = [...structuredAgenda, ...uniqueLive.slice(0, 10)];
 }
 
-function getWeeklyMacroAgenda() {
+function getTimeBucketAgenda() {
   const now = new Date();
+  
   return [
+    // 🟢 BU HAFTA
     {
-      title: "🗓️ ABD Tarım Dışı İstihdam (NFP) & İşsizlik Oranı Verisi",
-      link: "https://www.bls.gov/",
-      timestamp: new Date(now - 12 * 3600 * 1000).toISOString(),
-      comment: "📌 HAFTALIK KRİTİK: ABD istihdam piyasasının gücünü ve Fed'in faiz indirim hızını doğrudan belirler (SPX, DXY, XAU doğrudan etkilenir).",
-      type: "haftalik",
-      cat: "global"
-    },
-    {
-      title: "🗓️ ABD Çekirdek TÜFE (CPI) & ÜFE Enflasyon Verileri",
+      title: "🗓️ [BU HAFTA] ABD Çekirdek TÜFE (CPI) & Enflasyon Verileri",
       link: "https://www.bls.gov/cpi/",
-      timestamp: new Date(now - 24 * 3600 * 1000).toISOString(),
-      comment: "📌 HAFTALIK KRİTİK: Küresel enflasyon eğiliminin ana göstergesi. Beklenti altı veri DXY'yi düşürür, Ons Altın ve BIST100'ü destekler.",
-      type: "haftalik",
-      cat: "global"
+      timestamp: new Date(now - 4 * 3600 * 1000).toISOString(),
+      comment: "📌 BU HAFTA KRİTİK: Beklenti altı enflasyon DXY'yi zayıflatır, Ons Altın ve BIST100'ü destekler.",
+      bucket: "bu-hafta"
     },
     {
-      title: "🗓️ TCMB Para Politikası Kurulu (PPK) Faiz Kararı & İletişim Metni",
+      title: "🗓️ [BU HAFTA] TCMB Haftalık Para ve Banka İstatistikleri & Yabancı Payı",
       link: "https://www.tcmb.gov.tr",
-      timestamp: new Date(now - 36 * 3600 * 1000).toISOString(),
-      comment: "📌 TÜRKİYE KRİTİK: TCMB'nin faiz patikası ve sıkılık mesajı BIST100 bankacılık sektörü ve USD/TRY yönü üzerinde ana faktördür.",
-      type: "haftalik",
-      cat: "turkiye"
+      timestamp: new Date(now - 12 * 3600 * 1000).toISOString(),
+      comment: "📌 BU HAFTA KRİTİK: Yabancı yatırımcının BIST100 ve DİBS (tahvil) tarafındaki haftalık net alım/satım yönü.",
+      bucket: "bu-hafta"
+    },
+
+    // 🔵 GELECEK HAFTA
+    {
+      title: "🗓️ [GELECEK HAFTA] TCMB Para Politikası Kurulu (PPK) Faiz Kararı",
+      link: "https://www.tcmb.gov.tr",
+      timestamp: new Date(now.getTime() + 4 * 24 * 3600 * 1000).toISOString(),
+      comment: "📌 GELECEK HAFTA KRİTİK: Politika faizi duruşu, bankacılık hisseleri ve TL mevduat getirisi için doğrudan belirleyici.",
+      bucket: "gelecek-hafta"
     },
     {
-      title: "🗓️ FOMC (Fed) Toplantı Tutanakları & Powell Konuşmaları",
+      title: "🗓️ [GELECEK HAFTA] ABD Tarım Dışı İstihdam (NFP) & İşsizlik Oranı",
+      link: "https://www.bls.gov/",
+      timestamp: new Date(now.getTime() + 6 * 24 * 3600 * 1000).toISOString(),
+      comment: "📌 GELECEK HAFTA KRİTİK: Fed'in sonraki toplantıda yapacağı faiz indirim adımı için en net sinyal.",
+      bucket: "gelecek-hafta"
+    },
+
+    // 🟣 BU AY
+    {
+      title: "🗓️ [BU AY] FOMC (Fed) Faiz Kararı ve Jerome Powell Basın Toplantısı",
       link: "https://www.federalreserve.gov",
-      timestamp: new Date(now - 48 * 3600 * 1000).toISOString(),
-      comment: "📌 HAFTALIK KRİTİK: Küresel likidite koşulları ve VIX oynaklık endeksinin yönünü çizer.",
-      type: "haftalik",
-      cat: "global"
+      timestamp: new Date(now.getTime() + 18 * 24 * 3600 * 1000).toISOString(),
+      comment: "📌 BU AYIN ANA ODAĞI: Küresel dolar likiditesi, VIX oynaklık endeksi ve Kripto/Hisse rallisi yönü.",
+      bucket: "bu-ay"
     },
     {
-      title: "🗓️ TÜİK Aylık Tüketici Fiyat Endeksi (TÜFE) Verisi",
+      title: "🗓️ [BU AY] TÜİK Aylık Enflasyon (TÜFE) Açıklaması",
       link: "https://www.tuik.gov.tr",
-      timestamp: new Date(now - 60 * 3600 * 1000).toISOString(),
-      comment: "📌 TÜRKİYE KRİTİK: Yurtiçi reel getiri hesaplamaları ve TL mevduat/borsa geçişgenliği için en önemli veri.",
-      type: "haftalik",
-      cat: "turkiye"
+      timestamp: new Date(now.getTime() + 12 * 24 * 3600 * 1000).toISOString(),
+      comment: "📌 BU AYIN ANA ODAĞI: Reel faiz dengesi ve borsa alternatifi olan mevduat faizlerinin seyri.",
+      bucket: "bu-ay"
+    },
+
+    // ⚪ ARŞİV
+    {
+      title: "🏛️ [ARŞİV] Geçen Ayki Fed ve TCMB Faiz Kararları & Analiz Raporları",
+      link: "https://finance.yahoo.com",
+      timestamp: new Date(now - 35 * 24 * 3600 * 1000).toISOString(),
+      comment: "⚪ ARŞİV AKIŞI: Önceki dönem politika kararlarının piyasa üzerindeki uzun vadeli etkisi.",
+      bucket: "arsiv"
     }
   ];
 }
@@ -582,48 +600,38 @@ function generateAutoMacroComment(title) {
   }
 }
 
-let currentTab = "tum";
+let currentTab = "bu-hafta"; // VARSAYILAN OLARAK İLK AÇILIŞTA BU HAFTA SEÇİLİ GELİR
 
 function renderDynamicCalendar() {
   const container = document.getElementById("calList");
   container.innerHTML = "";
-
-  const now = Date.now();
-  const ONE_DAY_MS = 24 * 3600 * 1000;
 
   if (!DATA.liveNews || DATA.liveNews.length === 0) {
     container.innerHTML = `<div style="color:var(--text-dim); font-size:12px;">Haber akışı yükleniyor...</div>`;
     return;
   }
 
-  let filtered = [...DATA.liveNews];
+  const filtered = DATA.liveNews.filter(e => e.bucket === currentTab);
 
-  if (currentTab === "son24") {
-    filtered = filtered.filter(e => e.type === "anlik" || (now - new Date(e.timestamp).getTime()) <= ONE_DAY_MS);
-  } else if (currentTab === "haftalik") {
-    filtered = filtered.filter(e => e.type === "haftalik");
-  } else if (currentTab === "turkiye") {
-    filtered = filtered.filter(e => e.cat === "turkiye" || e.title.toLowerCase().includes("bist") || e.title.toLowerCase().includes("tcmb") || e.title.toLowerCase().includes("türkiye") || e.title.toLowerCase().includes("tuik"));
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="color:var(--text-dim); font-size:12.5px; padding:15px 0;">Bu zaman aralığı için henüz özel bir kayıt bulunamadı.</div>`;
+    return;
   }
 
   filtered.forEach(evt => {
-    const evtTime = new Date(evt.timestamp).getTime();
-    const diffHours = Math.max(0, Math.round((now - evtTime) / (3600 * 1000)));
-    
     let badgeHtml = "";
-    let timeStr = "";
-
-    if (evt.type === "haftalik") {
-      badgeHtml = `<span class="cal-badge haftalik">🗓️ HAFTALIK TAKİP</span>`;
-      timeStr = "Düzenli Takvim";
-    } else if ((now - evtTime) <= ONE_DAY_MS) {
-      badgeHtml = `<span class="cal-badge son-24">🟡 SICAK / ANLIK (${diffHours}s önce)</span>`;
-      timeStr = new Date(evt.timestamp).toLocaleTimeString("tr-TR", {hour:'2-digit', minute:'2-digit'});
+    
+    if (evt.bucket === "bu-hafta") {
+      badgeHtml = `<span class="cal-badge bu-hafta">🟢 BU HAFTA</span>`;
+    } else if (evt.bucket === "gelecek-hafta") {
+      badgeHtml = `<span class="cal-badge gelecek-hafta">🔵 GELECEK HAFTA</span>`;
+    } else if (evt.bucket === "bu-ay") {
+      badgeHtml = `<span class="cal-badge bu-ay">🟣 BU AY</span>`;
     } else {
-      const diffDays = Math.floor((now - evtTime) / ONE_DAY_MS);
-      badgeHtml = `<span class="cal-badge gecmis">⚪ AKIŞ (${diffDays}g önce)</span>`;
-      timeStr = new Date(evt.timestamp).toLocaleDateString("tr-TR", {day:'2-digit', month:'2-digit'});
+      badgeHtml = `<span class="cal-badge arsiv">⚪ ARŞİV</span>`;
     }
+
+    const timeStr = new Date(evt.timestamp).toLocaleDateString("tr-TR", {day:'2-digit', month:'2-digit', year:'numeric'});
 
     container.innerHTML += `
       <div class="cal-item">
