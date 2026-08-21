@@ -142,9 +142,12 @@
     font-family:'IBM Plex Mono',monospace; line-height:1.7;
   }
   .formula-box b{color:var(--text);}
-  .score-row{display:flex; justify-content:space-between; gap:8px;}
 
-  /* CALENDAR & NEWS STYLES */
+  /* NEWS & CALENDAR TABS */
+  .news-tabs{display:flex; gap:8px; margin-bottom:14px; border-bottom:1px solid var(--line-soft); padding-bottom:8px;}
+  .tab-btn{font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:5px 10px; background:transparent; border:1px solid transparent; border-radius:5px; color:var(--text-dim); cursor:pointer;}
+  .tab-btn.active{background:var(--panel2); border-color:var(--line); color:var(--teal); font-weight:600;}
+  
   .cal-item{display:flex; flex-direction:column; gap:6px; padding:12px 0; border-bottom:1px solid var(--line-soft);}
   .cal-item:last-child{border-bottom:none;}
   .cal-header{display:flex; justify-content:space-between; align-items:center;}
@@ -153,8 +156,9 @@
     padding:2px 8px; border-radius:4px; text-transform:uppercase;
   }
   .cal-badge.son-24{background:rgba(227,179,65,.18); color:var(--amber); border:1px solid rgba(227,179,65,.4);}
+  .cal-badge.haftalik{background:rgba(90,169,230,.18); color:var(--blue); border:1px solid rgba(90,169,230,.4);}
   .cal-badge.gecmis{background:rgba(140,150,161,.12); color:var(--text-dim); border:1px solid var(--line);}
-  .cal-badge.gelecek{background:rgba(63,191,158,.18); color:var(--teal); border:1px solid rgba(63,191,158,.4);}
+  .cal-badge.fomc{background:rgba(167,139,222,.18); color:var(--purple); border:1px solid rgba(167,139,222,.4);}
   .cal-time{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-faint);}
   .cal-title{font-size:13.5px; font-weight:600; color:var(--text);}
   .cal-title a{color:var(--text); text-decoration:none; transition:.15s;}
@@ -186,7 +190,7 @@
     </div>
     <div class="status-pill"><span class="dot"></span> <span id="liveClock">--:--:--</span> &nbsp;·&nbsp; Son yenileme: <span id="lastFetchLabel2">henüz yok</span></div>
   </header>
-  <div class="baseline-note">Saat, tarayıcınızın gerçek yerel saatidir ve sürekli akar. 🟢 Rozetli değerler canlı/gecikmeli olarak API'lerden çekilir; 🟡 rozetli değerler yedek snapshot'tır; 🔴 çekim hatasını gösterir. Bu panel kesinlikle <b>yatırım tavsiyesi değildir</b>, piyasa senaryolarını takip için tasarlanmıştır.</div>
+  <div class="baseline-note">Saat, tarayıcınızın gerçek yerel saatidir. 🟢 Rozetli değerler canlı/gecikmeli olarak API'lerden çekilir; 🟡 rozetli değerler yedek snapshot'tır; 🔴 çekim hatasını gösterir. Bu panel kesinlikle <b>yatırım tavsiyesi değildir</b>.</div>
 
   <!-- LIVE DATA ENGINE -->
   <div class="live-panel">
@@ -259,10 +263,18 @@
       <div class="formula-box" id="formulaBox"></div>
     </div>
 
-    <!-- DYNAMIC NEWS & CALENDAR PANEL -->
+    <!-- DYNAMIC NEWS & WEEKLY CALENDAR PANEL -->
     <div class="panel">
-      <h2>📡 Canlı Küresel Makro Haberler & Veri Akışı</h2>
-      <div class="desc">Canlı Google News & Küresel Finans servislerinden eşzamanlı çekilir. <b>Son 24 saatteki</b> haberler en üstte 🟡 <b>AÇIKLANDI / SICAK</b> etiketiyle tutulur.</div>
+      <h2>📡 Küresel & Türkiye Makro Veri Akışı ve Haftalık Ajanda</h2>
+      <div class="desc">Anlık sıcak haberler ile haftalık takip edilmesi gereken kritik ekonomik takvimi bir arada sunar.</div>
+      
+      <div class="news-tabs" id="newsTabs">
+        <button class="tab-btn active" data-tab="tum">Tümü</button>
+        <button class="tab-btn" data-tab="son24">Anlık / Son 24 Saat</button>
+        <button class="tab-btn" data-tab="haftalik">Haftalık Kritik Veriler</button>
+        <button class="tab-btn" data-tab="turkiye">Türkiye / BIST100</button>
+      </div>
+
       <div id="calList"></div>
     </div>
   </div>
@@ -404,7 +416,7 @@ async function fetchYahooQuote(symbolsArray, tickSym, isYield = false, prefix = 
       t.raw = price;
       t.status = "canli";
       t.updated = nowLabel();
-      return; // Başarılı olursa fonksiyondan çık
+      return; 
     } catch (err) {
       console.warn(`${symbol} (${tickSym}) alternatif deneniyor...`, err);
     }
@@ -471,12 +483,12 @@ async function fetchGoldSilverRatio(){
   } else { t.status = "hata"; }
 }
 
-/* ================= ENHANCED MULTI-SOURCE NEWS & CALENDAR ENGINE ================= */
+/* ================= ENHANCED MULTI-SOURCE & WEEKLY CALENDAR ENGINE ================= */
 async function fetchLiveNewsRSS() {
-  // 3 Farklı Bağımsız Haber Kaynağı URL'i
   const feeds = [
     "https://news.google.com/rss/search?q=fed+inflation+economy+markets+tcmb&hl=en-US&gl=US&ceid=US:en",
-    "https://news.google.com/rss/search?q=bist100+tcmb+faiz+dolar+borsa&hl=tr-TR&gl=TR&ceid=TR:tr",
+    "https://news.google.com/rss/search?q=bist100+tcmb+faiz+dolar+borsa+enflasyon&hl=tr-TR&gl=TR&ceid=TR:tr",
+    "https://news.google.com/rss/search?q=fomc+ecb+cpi+nonfarm+payrolls&hl=en-US&gl=US&ceid=US:en",
     "https://finance.yahoo.com/news/rssindex"
   ];
 
@@ -492,7 +504,8 @@ async function fetchLiveNewsRSS() {
             title: item.title,
             link: item.link,
             timestamp: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-            comment: generateAutoMacroComment(item.title)
+            comment: generateAutoMacroComment(item.title),
+            type: "anlik"
           });
         });
       }
@@ -501,42 +514,55 @@ async function fetchLiveNewsRSS() {
     }
   }
 
-  // Eğer haber servisleri yanıt vermezse yedek canlı makro ajandayı devreye sok
-  if (allArticles.length === 0) {
-    allArticles = getFallbackMacroEvents();
-  }
-
-  // Yinelenen haberleri başlıktan temizle ve en güncel 12 haberi al
+  // Sabit ve periyodik takip edilen HAFTALIK KRİTİK MAKRO AJANDA verilerini entegre et
+  const weeklyMacroAgenda = getWeeklyMacroAgenda();
+  
   const uniqueArticles = Array.from(new Map(allArticles.map(item => [item.title, item])).values());
-  DATA.liveNews = uniqueArticles.slice(0, 12);
+  DATA.liveNews = [...weeklyMacroAgenda, ...uniqueArticles.slice(0, 15)];
 }
 
-function getFallbackMacroEvents() {
+function getWeeklyMacroAgenda() {
   const now = new Date();
   return [
     {
-      title: "ABD Çekirdek TÜFE Enflasyonu & Fed Faiz İndirim Beklentileri Ekranlarda",
-      link: "https://finance.yahoo.com",
-      timestamp: new Date(now - 2 * 3600 * 1000).toISOString(),
-      comment: "💡 Enflasyon odaklı veri akışı: Tahvil getirileri ve Ons Altın tarafında oynaklığı artırabilir."
-    },
-    {
-      title: "TCMB Para Politikası Kurulu & Piyasa Likidite Yönetimi Takibinde",
-      link: "https://www.tcmb.gov.tr",
-      timestamp: new Date(now - 5 * 3600 * 1000).toISOString(),
-      comment: "💡 TCMB faiz duruşu: TL mevduat cazibesini korurken BIST100 sanayi hisseleri üzerinde etkili."
-    },
-    {
-      title: "Küresel Petrol ve Emtia Piyasalarında Arz-Talep Dengesi",
-      link: "https://www.bloomberg.com",
+      title: "🗓️ ABD Tarım Dışı İstihdam (NFP) & İşsizlik Oranı Verisi",
+      link: "https://www.bls.gov/",
       timestamp: new Date(now - 12 * 3600 * 1000).toISOString(),
-      comment: "💡 Enerji maliyeti akışı: Brent petrol kanalı üzerinden global enflasyon beklentilerini etkiler."
+      comment: "📌 HAFTALIK KRİTİK: ABD istihdam piyasasının gücünü ve Fed'in faiz indirim hızını doğrudan belirler (SPX, DXY, XAU doğrudan etkilenir).",
+      type: "haftalik",
+      cat: "global"
     },
     {
-      title: "Küresel Büyüme Göstergesi Bakır Fiyatları ve Çin Büyüme Verileri",
-      link: "https://www.reuters.com",
-      timestamp: new Date(now - 18 * 3600 * 1000).toISOString(),
-      comment: "💡 Sanayi metalleri ve küresel büyüme iştahının en hassas göstergesi."
+      title: "🗓️ ABD Çekirdek TÜFE (CPI) & ÜFE Enflasyon Verileri",
+      link: "https://www.bls.gov/cpi/",
+      timestamp: new Date(now - 24 * 3600 * 1000).toISOString(),
+      comment: "📌 HAFTALIK KRİTİK: Küresel enflasyon eğiliminin ana göstergesi. Beklenti altı veri DXY'yi düşürür, Ons Altın ve BIST100'ü destekler.",
+      type: "haftalik",
+      cat: "global"
+    },
+    {
+      title: "🗓️ TCMB Para Politikası Kurulu (PPK) Faiz Kararı & İletişim Metni",
+      link: "https://www.tcmb.gov.tr",
+      timestamp: new Date(now - 36 * 3600 * 1000).toISOString(),
+      comment: "📌 TÜRKİYE KRİTİK: TCMB'nin faiz patikası ve sıkılık mesajı BIST100 bankacılık sektörü ve USD/TRY yönü üzerinde ana faktördür.",
+      type: "haftalik",
+      cat: "turkiye"
+    },
+    {
+      title: "🗓️ FOMC (Fed) Toplantı Tutanakları & Powell Konuşmaları",
+      link: "https://www.federalreserve.gov",
+      timestamp: new Date(now - 48 * 3600 * 1000).toISOString(),
+      comment: "📌 HAFTALIK KRİTİK: Küresel likidite koşulları ve VIX oynaklık endeksinin yönünü çizer.",
+      type: "haftalik",
+      cat: "global"
+    },
+    {
+      title: "🗓️ TÜİK Aylık Tüketici Fiyat Endeksi (TÜFE) Verisi",
+      link: "https://www.tuik.gov.tr",
+      timestamp: new Date(now - 60 * 3600 * 1000).toISOString(),
+      comment: "📌 TÜRKİYE KRİTİK: Yurtiçi reel getiri hesaplamaları ve TL mevduat/borsa geçişgenliği için en önemli veri.",
+      type: "haftalik",
+      cat: "turkiye"
     }
   ];
 }
@@ -544,17 +570,19 @@ function getFallbackMacroEvents() {
 function generateAutoMacroComment(title) {
   const t = title.toLowerCase();
   if (t.includes("inflation") || t.includes("cpi") || t.includes("enflasyon")) {
-    return "💡 Enflasyon odaklı veri akışı: Tahvil getirileri ve Ons Altın tarafında oynaklığı artırabilir.";
+    return "💡 Enflasyon odaklı veri akışı: Tahvil getirileri, DXY ve Ons Altın tarafında oynaklığı artırabilir.";
   } else if (t.includes("fed") || t.includes("powell") || t.includes("rate") || t.includes("tcmb") || t.includes("faiz")) {
     return "💡 Merkez bankası politika beklentisi: DXY Dolar Endeksi ve BIST/Global borsalar için ana yön belirleyici.";
   } else if (t.includes("oil") || t.includes("energy") || t.includes("petrol")) {
     return "💡 Enerji maliyeti akışı: Brent petrol kanalı üzerinden küresel enflasyon beklentilerini etkiler.";
-  } else if (t.includes("bist") || t.includes("bursa") || t.includes("hisse")) {
+  } else if (t.includes("bist") || t.includes("bursa") || t.includes("hisse") || t.includes("türkiye")) {
     return "💡 Yurtiçi hisse senedi piyasası ve yabancı yatırımcı akış dinamiği.";
   } else {
     return "💡 Küresel piyasalarda takip edilen makro gelişme / haber akışı.";
   }
 }
+
+let currentTab = "tum";
 
 function renderDynamicCalendar() {
   const container = document.getElementById("calList");
@@ -568,21 +596,32 @@ function renderDynamicCalendar() {
     return;
   }
 
-  const sorted = [...DATA.liveNews].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  let filtered = [...DATA.liveNews];
 
-  sorted.forEach(evt => {
+  if (currentTab === "son24") {
+    filtered = filtered.filter(e => e.type === "anlik" || (now - new Date(e.timestamp).getTime()) <= ONE_DAY_MS);
+  } else if (currentTab === "haftalik") {
+    filtered = filtered.filter(e => e.type === "haftalik");
+  } else if (currentTab === "turkiye") {
+    filtered = filtered.filter(e => e.cat === "turkiye" || e.title.toLowerCase().includes("bist") || e.title.toLowerCase().includes("tcmb") || e.title.toLowerCase().includes("türkiye") || e.title.toLowerCase().includes("tuik"));
+  }
+
+  filtered.forEach(evt => {
     const evtTime = new Date(evt.timestamp).getTime();
     const diffHours = Math.max(0, Math.round((now - evtTime) / (3600 * 1000)));
     
     let badgeHtml = "";
     let timeStr = "";
 
-    if ((now - evtTime) <= ONE_DAY_MS) {
-      badgeHtml = `<span class="cal-badge son-24">🟡 AÇIKLANDI / SICAK (${diffHours} saat önce)</span>`;
+    if (evt.type === "haftalik") {
+      badgeHtml = `<span class="cal-badge haftalik">🗓️ HAFTALIK TAKİP</span>`;
+      timeStr = "Düzenli Takvim";
+    } else if ((now - evtTime) <= ONE_DAY_MS) {
+      badgeHtml = `<span class="cal-badge son-24">🟡 SICAK / ANLIK (${diffHours}s önce)</span>`;
       timeStr = new Date(evt.timestamp).toLocaleTimeString("tr-TR", {hour:'2-digit', minute:'2-digit'});
     } else {
       const diffDays = Math.floor((now - evtTime) / ONE_DAY_MS);
-      badgeHtml = `<span class="cal-badge gecmis">⚪ ARŞİV (${diffDays} gün önce)</span>`;
+      badgeHtml = `<span class="cal-badge gecmis">⚪ AKIŞ (${diffDays}g önce)</span>`;
       timeStr = new Date(evt.timestamp).toLocaleDateString("tr-TR", {day:'2-digit', month:'2-digit'});
     }
 
@@ -600,6 +639,15 @@ function renderDynamicCalendar() {
     `;
   });
 }
+
+document.getElementById("newsTabs").addEventListener("click", (e)=>{
+  if(e.target.classList.contains("tab-btn")){
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    e.target.classList.add("active");
+    currentTab = e.target.dataset.tab;
+    renderDynamicCalendar();
+  }
+});
 
 /* ================= DYNAMIC SIGNALS & COMMENTS ================= */
 function updateDynamicSignalsAndComments() {
